@@ -65,6 +65,6 @@ func getMetricsInfoFromRq(r *http.Request) (*models.Metrics, error) {
 		metrics.Delta = &delta
 		return metrics, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("invalid metric type: %s", metrics.MType))
+		return nil, fmt.Errorf("invalid metric type: %s", metrics.MType)
 	}
 }
