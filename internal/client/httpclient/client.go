@@ -16,19 +16,19 @@ type Config struct {
 	Host string
 }
 
-type HttpClient struct {
+type HTTPClient struct {
 	cfg    Config
 	client *http.Client
 }
 
-func NewClient(cfg Config) *HttpClient {
-	return &HttpClient{
+func NewClient(cfg Config) *HTTPClient {
+	return &HTTPClient{
 		cfg:    cfg,
 		client: http.DefaultClient, // todo настроить
 	}
 }
 
-func (h *HttpClient) SendMetric(metric *models.Metrics) error {
+func (h *HTTPClient) SendMetric(metric *models.Metrics) error {
 	resp, err := h.sendRequest(metric)
 	if err != nil {
 		return fmt.Errorf("request error, err: %w", err)
@@ -41,7 +41,7 @@ func (h *HttpClient) SendMetric(metric *models.Metrics) error {
 	return nil
 }
 
-func (h *HttpClient) sendRequest(metrics *models.Metrics) (*http.Response, error) {
+func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error) {
 	resURL, err := formURL(h.cfg.Host, metrics)
 	if err != nil {
 		return nil, fmt.Errorf("failed to form url, err: %w", err)
