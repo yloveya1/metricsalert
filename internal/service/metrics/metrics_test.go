@@ -52,8 +52,9 @@ func TestService_UpdateCounterMetric(t *testing.T) {
 			if tt.prepare != nil {
 				tt.prepare(store)
 			}
+
 			err := s.UpdateCounterMetric(nil)
-			assert.Equal(t, err == nil, tt.wantErr)
+			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}
 }
@@ -92,9 +93,9 @@ func TestService_UpdateGaugerMetric(t *testing.T) {
 			if tt.prepare != nil {
 				tt.prepare(store)
 			}
-			err := s.UpdateGaugeMetric(nil)
 
-			assert.Contains(t, err == nil, tt.wantErr)
+			err := s.UpdateGaugeMetric(nil)
+			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}
 }
