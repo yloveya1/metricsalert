@@ -26,7 +26,7 @@
             {{if eq .MType "counter"}}
             {{val .Delta}}
             {{else if eq .MType "gauge"}}
-            {{printf "%.3f" (fval .Value)}}
+            {{printf "%.2f" (fval .Value)}}
             {{end}}
         </td>
     </tr>
