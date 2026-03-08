@@ -59,7 +59,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if resp.MType == models.Gauge {
-		_, err = w.Write([]byte(fmt.Sprintf("%f", *resp.Value)))
+		_, err = w.Write([]byte(fmt.Sprintf("%g", *resp.Value)))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
