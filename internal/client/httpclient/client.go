@@ -9,7 +9,7 @@ import (
 
 var (
 	updateCounterEndpoint = "/update/%s/%s/%d"
-	updateGaugeEndpoint   = "/update/%s/%s/%.2f"
+	updateGaugeEndpoint   = "/update/%s/%s/%f"
 )
 
 type Config struct {
