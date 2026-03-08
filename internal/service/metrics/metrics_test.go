@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/yloveya1/metricsalert/internal/mocks"
+	models "github.com/yloveya1/metricsalert/internal/model"
 )
 
 func Test_New(t *testing.T) {
@@ -18,67 +19,60 @@ func Test_New(t *testing.T) {
 	assert.NotEmpty(t, s)
 }
 
-func TestService_UpdateCounterMetric(t *testing.T) {
+func TestService_UpdateMetric(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	tests := []struct {
 		name    string
-		prepare func(store *mocks.MockIStorage)
+		metric  *models.Metrics
+		prepare func(store *mocks.MockIStorage, metric *models.Metrics)
 		wantErr bool
 	}{
 		{
 			name: "success updating counter metric",
-			prepare: func(store *mocks.MockIStorage) {
-				store.EXPECT().UpdateCounterMetric(nil).Return(nil)
+			metric: &models.Metrics{
+				MType: models.Counter,
+			},
+			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
+			},
+			wantErr: false,
+		},
+		{
+			name: "success updating gauge metric",
+			metric: &models.Metrics{
+				MType: models.Gauge,
+			},
+			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+				store.EXPECT().UpdateGaugeMetric(metric).Return(nil)
 			},
 			wantErr: false,
 		},
 		{
 			name: "failed updating counter metric",
-			prepare: func(store *mocks.MockIStorage) {
-				store.EXPECT().UpdateCounterMetric(nil).Return(errors.New("error"))
+			metric: &models.Metrics{
+				MType: models.Counter,
+			},
+			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+				store.EXPECT().UpdateCounterMetric(metric).Return(errors.New("error"))
 			},
 			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			store := mocks.NewMockIStorage(ctrl)
-			s := &Service{
-				storage: store,
-			}
-
-			if tt.prepare != nil {
-				tt.prepare(store)
-			}
-
-			err := s.UpdateCounterMetric(nil)
-			assert.Equal(t, tt.wantErr, err != nil)
-		})
-	}
-}
-
-func TestService_UpdateGaugerMetric(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	tests := []struct {
-		name    string
-		prepare func(store *mocks.MockIStorage)
-		wantErr bool
-	}{
-		{
-			name: "success updating gauge metric",
-			prepare: func(store *mocks.MockIStorage) {
-				store.EXPECT().UpdateGaugeMetric(nil).Return(nil)
-			},
-			wantErr: false,
 		},
 		{
 			name: "failed updating gauge metric",
-			prepare: func(store *mocks.MockIStorage) {
-				store.EXPECT().UpdateGaugeMetric(nil).Return(errors.New("error"))
+			metric: &models.Metrics{
+				MType: models.Gauge,
+			},
+			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+				store.EXPECT().UpdateGaugeMetric(metric).Return(errors.New("error"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "unknown metric type",
+			metric: &models.Metrics{
+				MType: "invalid type",
 			},
 			wantErr: true,
 		},
@@ -91,10 +85,10 @@ func TestService_UpdateGaugerMetric(t *testing.T) {
 			}
 
 			if tt.prepare != nil {
-				tt.prepare(store)
+				tt.prepare(store, tt.metric)
 			}
 
-			err := s.UpdateGaugeMetric(nil)
+			err := s.UpdateMetric(tt.metric)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}

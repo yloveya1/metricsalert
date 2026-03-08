@@ -1,13 +1,17 @@
 package router
 
 import (
-	"net/http"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/yloveya1/metricsalert/internal/handler"
 )
 
-func New(h *handler.Handler) *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update/{type}/{name}/{value}", h.UpdateMetric)
-	return mux
+func New(h *handler.Handler) chi.Router {
+	r := chi.NewRouter()
+
+	r.Post("/update/{type}/{name}/{value}", h.UpdateMetric)
+	r.Get("/value/{type}/{name}", h.GetMetric)
+
+	r.Get("/", h.GetMetricList)
+
+	return r
 }

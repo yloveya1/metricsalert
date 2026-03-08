@@ -34,6 +34,36 @@ func (m *MockIStorage) EXPECT() *MockIStorageMockRecorder {
 	return m.recorder
 }
 
+// GetMetricByID mocks base method.
+func (m *MockIStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMetricByID", metric)
+	ret0, _ := ret[0].(models.Metrics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMetricByID indicates an expected call of GetMetricByID.
+func (mr *MockIStorageMockRecorder) GetMetricByID(metric interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByID", reflect.TypeOf((*MockIStorage)(nil).GetMetricByID), metric)
+}
+
+// GetMetricList mocks base method.
+func (m *MockIStorage) GetMetricList() ([]models.Metrics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMetricList")
+	ret0, _ := ret[0].([]models.Metrics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMetricList indicates an expected call of GetMetricList.
+func (mr *MockIStorageMockRecorder) GetMetricList() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricList", reflect.TypeOf((*MockIStorage)(nil).GetMetricList))
+}
+
 // UpdateCounterMetric mocks base method.
 func (m *MockIStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	m.ctrl.T.Helper()
