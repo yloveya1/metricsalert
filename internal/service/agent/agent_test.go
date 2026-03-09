@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ func Test_NewAgent(t *testing.T) {
 	mockCl := mocks.NewMockIClient(ctrl)
 	mockCollector := mocks.NewMockIRuntimeAgent(ctrl)
 
-	ag := NewAgent(mockCl, mockCollector)
+	ag := NewAgent(mockCl, mockCollector, 1)
 
 	assert.Equal(t, mockCl, ag.cl)
 	assert.Equal(t, mockCollector, ag.runtimeAgent)
@@ -117,7 +118,7 @@ func Test_StartAgent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ag := Agent{cl: mockCl, runtimeAgent: runtimeAgent}
+			ag := Agent{cl: mockCl, runtimeAgent: runtimeAgent, reportInterval: 100 * time.Millisecond}
 			tt.args.ctx, tt.args.cancel = context.WithCancel(context.Background())
 			if tt.prepare != nil {
 				tt.prepare(tt.args)
