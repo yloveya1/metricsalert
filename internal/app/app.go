@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/yloveya1/metricsalert/internal/agent/runtimemetrics"
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
@@ -14,20 +15,22 @@ import (
 )
 
 func RunServer() error {
+	cfg := getServerConfig()
 	storage := memory.NewMemStorage()
 	service := metrics.NewService(storage)
 
 	h := handler.New(service)
 	r := router.New(h)
 
-	return http.ListenAndServe(":8080", r)
+	return http.ListenAndServe(cfg.Address, r)
 }
 
 func RunAgent(ctx context.Context) error {
-	cl := httpclient.NewClient(httpclient.Config{Host: "http://localhost:8080"})
-	rc := runtimemetrics.NewRuntimeCollector()
+	cfg := getAgentConfig()
+	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + cfg.Address})
+	rc := runtimemetrics.NewRuntimeCollector(time.Duration(cfg.PollInterval) * time.Second)
 	go rc.CollectMetrics(ctx)
 
-	ag := agent.NewAgent(cl, rc)
+	ag := agent.NewAgent(cl, rc, time.Duration(cfg.ReportInterval)*time.Second)
 	return ag.StartAgent(ctx)
 }

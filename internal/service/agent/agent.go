@@ -10,22 +10,22 @@ import (
 	models "github.com/yloveya1/metricsalert/internal/model"
 )
 
-const sendTimeout = 10 * time.Second
-
 type Agent struct {
-	cl           client.IClient
-	runtimeAgent agent.IRuntimeAgent
+	cl             client.IClient
+	runtimeAgent   agent.IRuntimeAgent
+	reportInterval time.Duration
 }
 
-func NewAgent(cl client.IClient, ra agent.IRuntimeAgent) *Agent {
+func NewAgent(cl client.IClient, ra agent.IRuntimeAgent, r time.Duration) *Agent {
 	return &Agent{
-		cl:           cl,
-		runtimeAgent: ra,
+		cl:             cl,
+		runtimeAgent:   ra,
+		reportInterval: r,
 	}
 }
 
 func (a *Agent) StartAgent(ctx context.Context) error {
-	ticker := time.NewTicker(sendTimeout)
+	ticker := time.NewTicker(a.reportInterval)
 	defer ticker.Stop()
 
 	for {

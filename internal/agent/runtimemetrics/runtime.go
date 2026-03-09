@@ -37,19 +37,20 @@ const (
 	TotalAlloc    = "TotalAlloc"
 	RandomValue   = "RandomValue"
 
-	PollCount    = "PollCount"
-	PollInterval = 2 * time.Second
+	PollCount = "PollCount"
 )
 
 type RuntimeCollector struct {
-	counter map[string]int64
-	gauge   map[string]float64
+	counter      map[string]int64
+	gauge        map[string]float64
+	pollInterval time.Duration
 }
 
-func NewRuntimeCollector() *RuntimeCollector {
+func NewRuntimeCollector(pollInterval time.Duration) *RuntimeCollector {
 	return &RuntimeCollector{
-		counter: make(map[string]int64),
-		gauge:   make(map[string]float64),
+		counter:      make(map[string]int64),
+		gauge:        make(map[string]float64),
+		pollInterval: pollInterval,
 	}
 }
 
@@ -61,7 +62,7 @@ func (rc *RuntimeCollector) GetGaugeMetrics() map[string]float64 {
 }
 
 func (rc *RuntimeCollector) CollectMetrics(ctx context.Context) {
-	ticker := time.NewTicker(PollInterval)
+	ticker := time.NewTicker(rc.pollInterval)
 	defer ticker.Stop()
 
 	for {
