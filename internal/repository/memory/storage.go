@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"sync"
+
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/repository"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
@@ -9,6 +11,7 @@ import (
 type MemStorage struct {
 	counter map[string]models.Metrics
 	gauge   map[string]models.Metrics
+	mu      sync.RWMutex
 }
 
 func NewMemStorage() repository.IStorage {
@@ -19,6 +22,9 @@ func NewMemStorage() repository.IStorage {
 }
 
 func (ms *MemStorage) GetMetricList() ([]models.Metrics, error) {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	metricList := make([]models.Metrics, 0, len(ms.counter)+len(ms.gauge))
 	for _, v := range ms.counter {
 		metricList = append(metricList, v)
@@ -32,6 +38,9 @@ func (ms *MemStorage) GetMetricList() ([]models.Metrics, error) {
 }
 
 func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, error) {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
 	switch metric.MType {
 	case models.Counter:
 		if m, ok := ms.counter[metric.ID]; ok {
@@ -46,16 +55,25 @@ func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, err
 }
 
 func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
 	ms.gauge[metric.ID] = *metric
 	return nil
 }
 
 func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
-	if _, ok := ms.counter[metric.ID]; !ok {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	val, ok := ms.counter[metric.ID]
+	if !ok {
 		ms.counter[metric.ID] = *metric
 		return nil
 	}
 
-	*ms.counter[metric.ID].Delta += *metric.Delta
+	*val.Delta += *metric.Delta
+	ms.counter[metric.ID] = val
+
 	return nil
 }

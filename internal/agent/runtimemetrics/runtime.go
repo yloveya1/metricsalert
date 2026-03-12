@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -43,6 +44,7 @@ const (
 type RuntimeCollector struct {
 	counter      map[string]int64
 	gauge        map[string]float64
+	mu           sync.RWMutex
 	pollInterval time.Duration
 }
 
@@ -55,10 +57,25 @@ func NewRuntimeCollector(pollInterval time.Duration) *RuntimeCollector {
 }
 
 func (rc *RuntimeCollector) GetCounterMetrics() map[string]int64 {
-	return rc.counter
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+
+	res := make(map[string]int64, len(rc.counter))
+	for k, v := range rc.counter {
+		res[k] = v
+	}
+	return res
 }
+
 func (rc *RuntimeCollector) GetGaugeMetrics() map[string]float64 {
-	return rc.gauge
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
+
+	res := make(map[string]float64, len(rc.gauge))
+	for k, v := range rc.gauge {
+		res[k] = v
+	}
+	return res
 }
 
 func (rc *RuntimeCollector) CollectMetrics(ctx context.Context) {
@@ -72,8 +89,10 @@ func (rc *RuntimeCollector) CollectMetrics(ctx context.Context) {
 		case <-ticker.C:
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
+			rc.mu.Lock()
 			rc.setGaugeMetrics(memStats)
 			rc.setCounterMetrics()
+			rc.mu.Unlock()
 		}
 	}
 }
