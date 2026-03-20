@@ -1,0 +1,36 @@
+<!-- templates/metrics.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Metrics</title>
+    <style>
+        table { border-collapse: collapse; width: 50%; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .counter { color: #d32f2f; font-weight: bold; }
+        .gauge { color: #1976d2; }
+    </style>
+</head>
+<body>
+<h1>Метрики ({{len .}})</h1>
+<table>
+    <tr>
+        <th>Имя</th>
+        <th>Значение</th>
+    </tr>
+    {{range .}}
+    <tr>
+        <td>{{.ID}}</td>
+        <td class="{{.MType}}">
+            {{if eq .MType "counter"}}
+            {{val .Delta}}
+            {{else if eq .MType "gauge"}}
+            {{printf "%.2f" (fval .Value)}}
+            {{end}}
+        </td>
+    </tr>
+    {{end}}
+</table>
+</body>
+</html>
