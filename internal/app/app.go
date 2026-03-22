@@ -7,6 +7,7 @@ import (
 
 	"github.com/yloveya1/metricsalert/internal/agent/runtimemetrics"
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
+	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
 	"github.com/yloveya1/metricsalert/internal/router"
@@ -15,7 +16,11 @@ import (
 )
 
 func RunServer() error {
-	cfg := getServerConfig()
+	cfg, err := config.GetServerConfig()
+	if err != nil {
+		return err
+	}
+
 	storage := memory.NewMemStorage()
 	service := metrics.NewService(storage)
 
@@ -26,7 +31,11 @@ func RunServer() error {
 }
 
 func RunAgent(ctx context.Context) error {
-	cfg := getAgentConfig()
+	cfg, err := config.GetAgentConfig()
+	if err != nil {
+		return err
+	}
+
 	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + cfg.Address})
 	rc := runtimemetrics.NewRuntimeCollector(time.Duration(cfg.PollInterval) * time.Second)
 	go rc.CollectMetrics(ctx)
