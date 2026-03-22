@@ -9,13 +9,19 @@ import (
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
 	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
+	"github.com/yloveya1/metricsalert/internal/logger"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
 	"github.com/yloveya1/metricsalert/internal/router"
 	"github.com/yloveya1/metricsalert/internal/service/agent"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
+	"go.uber.org/zap"
 )
 
 func RunServer() error {
+	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
+		return err
+	}
+
 	cfg, err := config.GetServerConfig()
 	if err != nil {
 		return err

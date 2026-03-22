@@ -35,8 +35,6 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 		flag.IntVar(&cfg.PollInterval, "p", 2, "poll interval")
 	}
 
-	fmt.Println(cfg)
-
 	flag.Parse()
 
 	return cfg, nil
