@@ -10,12 +10,12 @@ func New(h *handler.Handler) chi.Router {
 
 	r.Use(h.WithLogging())
 
-	r.Route("/update", func(r chi.Router) {
+	r.Route("/update/", func(r chi.Router) {
 		r.Post("/", h.UpdateMetricFromBody)
 		r.Post("/{type}/{name}/{value}", h.UpdateMetricFromPath)
 	})
 
-	r.Route("/value", func(r chi.Router) {
+	r.Route("/value/", func(r chi.Router) {
 		r.Post("/", h.GetMetricFromBody)
 		r.Get("/{type}/{name}", h.GetMetricFromPath)
 	})
