@@ -36,6 +36,11 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	var metric models.Metrics
 	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
@@ -55,6 +60,11 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	var metric models.Metrics
 	err := json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
@@ -81,6 +91,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
 }
