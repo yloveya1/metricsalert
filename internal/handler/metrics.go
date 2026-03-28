@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -18,14 +19,14 @@ const (
 	ValuePath = "value"
 )
 
-func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 	metric, err := getMetricInfoFromRq(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = h.metric.UpdateMetric(metric)
+	err = h.metricCtrl.UpdateMetric(metric)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -34,7 +35,57 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	var metric models.Metrics
+	err := json.NewDecoder(r.Body).Decode(&metric)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = h.metricCtrl.UpdateMetric(&metric)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	var metric models.Metrics
+	err := json.NewDecoder(r.Body).Decode(&metric)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	defer r.Body.Close()
+
+	res, err := h.metricCtrl.GetMetric(&metric)
+	if err != nil {
+		if errors.Is(err, metrics.ErrMetricNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := json.Marshal(&res)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
+}
+
+func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 	mType := chi.URLParam(r, TypePath)
 	if mType != models.Gauge && mType != models.Counter {
 		http.Error(w, "invalid metric type", http.StatusBadRequest)
@@ -43,7 +94,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	name := chi.URLParam(r, NamePath)
 
-	resp, err := h.metric.GetMetric(&models.Metrics{
+	resp, err := h.metricCtrl.GetMetric(&models.Metrics{
 		ID:    name,
 		MType: mType,
 	})
@@ -76,7 +127,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricList(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.metric.GetMetricList()
+	resp, err := h.metricCtrl.GetMetricList()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

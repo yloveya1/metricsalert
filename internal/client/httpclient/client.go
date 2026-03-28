@@ -1,6 +1,8 @@
 package httpclient
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,6 +12,7 @@ import (
 var (
 	updateCounterEndpoint = "/update/%s/%s/%d"
 	updateGaugeEndpoint   = "/update/%s/%s/%g"
+	updateEndpoint        = "/update/"
 )
 
 type Config struct {
@@ -42,17 +45,19 @@ func (h *HTTPClient) SendMetric(metric *models.Metrics) error {
 }
 
 func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error) {
-	resURL, err := formURL(h.cfg.Host, metrics)
+	resURL := h.cfg.Host + updateEndpoint
+
+	body, err := json.Marshal(metrics)
 	if err != nil {
-		return nil, fmt.Errorf("failed to form url, err: %w", err)
+		return nil, fmt.Errorf("marshal metrics error, err: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, resURL, nil)
+	req, err := http.NewRequest(http.MethodPost, resURL, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := h.client.Do(req)
 	if err != nil {
@@ -61,6 +66,7 @@ func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error
 
 	return resp, nil
 }
+
 func formURL(url string, metrics *models.Metrics) (string, error) {
 	switch metrics.MType {
 	case models.Counter:
