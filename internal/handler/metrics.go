@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"mime"
 	"net/http"
 	"strconv"
 
@@ -36,19 +37,19 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
+	ct, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || ct != "application/json" {
+		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
 	var metric models.Metrics
-	err := json.NewDecoder(r.Body).Decode(&metric)
+	err = json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	defer r.Body.Close()
 
 	err = h.metricCtrl.UpdateMetric(&metric)
 	if err != nil {
@@ -60,19 +61,19 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
+	ct, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || ct != "application/json" {
+		http.Error(w, "invalid content type", http.StatusBadRequest)
 		return
 	}
+	defer r.Body.Close()
 
 	var metric models.Metrics
-	err := json.NewDecoder(r.Body).Decode(&metric)
+	err = json.NewDecoder(r.Body).Decode(&metric)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	defer r.Body.Close()
 
 	res, err := h.metricCtrl.GetMetric(&metric)
 	if err != nil {
@@ -81,19 +82,16 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	resp, err := json.Marshal(&res)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	if err = json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
