@@ -45,19 +45,21 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var metric models.Metrics
-	err = json.NewDecoder(r.Body).Decode(&metric)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err = json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.metricCtrl.UpdateMetric(&metric)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+	if err = h.metricCtrl.UpdateMetric(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"status": "success",
+	})
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
