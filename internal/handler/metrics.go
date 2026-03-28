@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -40,11 +38,8 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	body, _ := io.ReadAll(r.Body)
-	log.Printf("UpdateMetricFromBody: method=%s ct=%q body=%q", r.Method, r.Header.Get("Content-Type"), string(body))
-
 	var metric models.Metrics
-	if err := json.Unmarshal(body, &metric); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -54,43 +49,31 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	defer r.Body.Close()
 
 	var metric models.Metrics
-	err := json.NewDecoder(r.Body).Decode(&metric)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	res, err := h.metricCtrl.GetMetric(&metric)
 	if err != nil {
 		if errors.Is(err, metrics.ErrMetricNotFound) {
-			w.WriteHeader(http.StatusNotFound)
+			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(res); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	_ = json.NewEncoder(w).Encode(res)
 }
 
 func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
