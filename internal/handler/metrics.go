@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -36,15 +38,13 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	defer r.Body.Close()
 
+	body, _ := io.ReadAll(r.Body)
+	log.Printf("UpdateMetricFromBody: method=%s ct=%q body=%q", r.Method, r.Header.Get("Content-Type"), string(body))
+
 	var metric models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+	if err := json.Unmarshal(body, &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -56,9 +56,7 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{
-		"status": "success",
-	})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
