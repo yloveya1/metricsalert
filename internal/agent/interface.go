@@ -1,7 +1,8 @@
 package agent
 
+import models "github.com/yloveya1/metricsalert/internal/model"
+
 //go:generate mockgen -source=interface.go -destination=../mocks/agent.go -package=mocks
 type IRuntimeAgent interface {
-	GetCounterMetrics() map[string]int64
-	GetGaugeMetrics() map[string]float64
+	GetMetrics() []*models.Metrics
 }

@@ -1,11 +1,11 @@
 package runtimemetrics
 
 import (
-	"context"
-	"math/rand"
+	"math/rand/v2"
 	"runtime"
 	"sync"
-	"time"
+
+	models "github.com/yloveya1/metricsalert/internal/model"
 )
 
 const (
@@ -42,92 +42,57 @@ const (
 )
 
 type RuntimeCollector struct {
-	counter      map[string]int64
-	gauge        map[string]float64
-	mu           sync.RWMutex
-	pollInterval time.Duration
+	mu      sync.RWMutex
+	counter int64
 }
 
-func NewRuntimeCollector(pollInterval time.Duration) *RuntimeCollector {
-	return &RuntimeCollector{
-		counter:      make(map[string]int64),
-		gauge:        make(map[string]float64),
-		pollInterval: pollInterval,
-	}
+func NewRuntimeCollector() *RuntimeCollector {
+	return &RuntimeCollector{}
 }
 
-func (rc *RuntimeCollector) GetCounterMetrics() map[string]int64 {
+func (rc *RuntimeCollector) GetMetrics() []*models.Metrics {
 	rc.mu.RLock()
 	defer rc.mu.RUnlock()
 
-	res := make(map[string]int64, len(rc.counter))
-	for k, v := range rc.counter {
-		res[k] = v
+	rc.counter++
+	metRuntime := runtime.MemStats{}
+	runtime.ReadMemStats(&metRuntime)
+
+	metrics := []*models.Metrics{
+		{ID: Alloc, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Alloc))},
+		{ID: BuckHashSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.BuckHashSys))},
+		{ID: Frees, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Frees))},
+		{ID: GCCPUFraction, MType: models.Gauge, Value: float64Ptr(metRuntime.GCCPUFraction)},
+		{ID: GCSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.GCSys))},
+		{ID: HeapAlloc, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapAlloc))},
+		{ID: HeapIdle, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapIdle))},
+		{ID: HeapInuse, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapInuse))},
+		{ID: HeapObjects, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapObjects))},
+		{ID: HeapReleased, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapReleased))},
+		{ID: HeapSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.HeapSys))},
+		{ID: LastGC, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.LastGC))},
+		{ID: Lookups, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Lookups))},
+		{ID: MCacheInuse, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.MCacheInuse))},
+		{ID: MCacheSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.MCacheSys))},
+		{ID: MSpanInuse, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.MSpanInuse))},
+		{ID: MSpanSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.MSpanSys))},
+		{ID: Mallocs, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Mallocs))},
+		{ID: NextGC, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.NextGC))},
+		{ID: NumForcedGC, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.NumForcedGC))},
+		{ID: NumGC, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.NumGC))},
+		{ID: OtherSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.OtherSys))},
+		{ID: PauseTotalNs, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.PauseTotalNs))},
+		{ID: StackInuse, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.StackInuse))},
+		{ID: StackSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.StackSys))},
+		{ID: Sys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Sys))},
+		{ID: TotalAlloc, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.TotalAlloc))},
+		{ID: RandomValue, MType: models.Gauge, Value: float64Ptr(rand.Float64())},
+		{ID: PollCount, MType: models.Counter, Delta: &rc.counter},
 	}
-	return res
+
+	return metrics
 }
 
-func (rc *RuntimeCollector) GetGaugeMetrics() map[string]float64 {
-	rc.mu.RLock()
-	defer rc.mu.RUnlock()
-
-	res := make(map[string]float64, len(rc.gauge))
-	for k, v := range rc.gauge {
-		res[k] = v
-	}
-	return res
-}
-
-func (rc *RuntimeCollector) CollectMetrics(ctx context.Context) {
-	ticker := time.NewTicker(rc.pollInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			var memStats runtime.MemStats
-			runtime.ReadMemStats(&memStats)
-			rc.mu.Lock()
-			rc.setGaugeMetrics(memStats)
-			rc.setCounterMetrics()
-			rc.mu.Unlock()
-		}
-	}
-}
-
-func (rc *RuntimeCollector) setGaugeMetrics(stats runtime.MemStats) {
-	rc.gauge[Alloc] = float64(stats.Alloc)
-	rc.gauge[BuckHashSys] = float64(stats.BuckHashSys)
-	rc.gauge[Frees] = float64(stats.Frees)
-	rc.gauge[GCCPUFraction] = stats.GCCPUFraction
-	rc.gauge[GCSys] = float64(stats.GCSys)
-	rc.gauge[HeapAlloc] = float64(stats.HeapAlloc)
-	rc.gauge[HeapIdle] = float64(stats.HeapIdle)
-	rc.gauge[HeapInuse] = float64(stats.HeapInuse)
-	rc.gauge[HeapObjects] = float64(stats.HeapObjects)
-	rc.gauge[HeapReleased] = float64(stats.HeapReleased)
-	rc.gauge[HeapSys] = float64(stats.HeapSys)
-	rc.gauge[LastGC] = float64(stats.LastGC)
-	rc.gauge[Lookups] = float64(stats.Lookups)
-	rc.gauge[MCacheInuse] = float64(stats.MCacheInuse)
-	rc.gauge[MCacheSys] = float64(stats.MCacheSys)
-	rc.gauge[Mallocs] = float64(stats.Mallocs)
-	rc.gauge[NextGC] = float64(stats.NextGC)
-	rc.gauge[NumForcedGC] = float64(stats.NumForcedGC)
-	rc.gauge[NumGC] = float64(stats.NumGC)
-	rc.gauge[OtherSys] = float64(stats.OtherSys)
-	rc.gauge[PauseTotalNs] = float64(stats.PauseTotalNs)
-	rc.gauge[StackInuse] = float64(stats.StackInuse)
-	rc.gauge[StackSys] = float64(stats.StackSys)
-	rc.gauge[Sys] = float64(stats.Sys)
-	rc.gauge[TotalAlloc] = float64(stats.TotalAlloc)
-	rc.gauge[MSpanSys] = float64(stats.MSpanSys)
-	rc.gauge[MSpanInuse] = float64(stats.MSpanInuse)
-	rc.gauge[RandomValue] = rand.Float64()
-}
-
-func (rc *RuntimeCollector) setCounterMetrics() {
-	rc.counter[PollCount] = rc.counter[PollCount] + 1
+func float64Ptr(v float64) *float64 {
+	return &v
 }

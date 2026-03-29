@@ -14,13 +14,16 @@ type Agent struct {
 	cl             client.IClient
 	runtimeAgent   agent.IRuntimeAgent
 	reportInterval time.Duration
+	pollInterval   time.Duration
 }
 
-func NewAgent(cl client.IClient, ra agent.IRuntimeAgent, r time.Duration) *Agent {
+func NewAgent(cl client.IClient, ra agent.IRuntimeAgent,
+	r time.Duration, p time.Duration) *Agent {
 	return &Agent{
 		cl:             cl,
 		runtimeAgent:   ra,
 		reportInterval: r,
+		pollInterval:   p,
 	}
 }
 
@@ -28,42 +31,30 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 	ticker := time.NewTicker(a.reportInterval)
 	defer ticker.Stop()
 
+	tickerP := time.NewTicker(a.pollInterval)
+	defer ticker.Stop()
+
+	var metrics []*models.Metrics
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-tickerP.C:
+			metrics = a.runtimeAgent.GetMetrics()
 		case <-ticker.C:
-			if err := a.sendMetric(); err != nil {
+			if err := a.sendMetric(metrics); err != nil {
 				return err
 			}
 		}
 	}
 }
 
-func (a *Agent) sendMetric() error {
-	for id, value := range a.runtimeAgent.GetGaugeMetrics() {
-		v := value
-		metric := &models.Metrics{
-			ID:    id,
-			MType: models.Gauge,
-			Value: &v,
-		}
-		err := a.cl.SendMetric(metric)
+func (a *Agent) sendMetric(metrics []*models.Metrics) error {
+	for _, value := range metrics {
+		err := a.cl.SendMetric(value)
 		if err != nil {
-			return fmt.Errorf("failed to send gauge metric: %w", err)
-		}
-	}
-
-	for id, value := range a.runtimeAgent.GetCounterMetrics() {
-		v := value
-		metric := &models.Metrics{
-			ID:    id,
-			MType: models.Counter,
-			Delta: &v,
-		}
-		err := a.cl.SendMetric(metric)
-		if err != nil {
-			return fmt.Errorf("failed to send counter metric: %w", err)
+			return fmt.Errorf("failed to send metric: %w", err)
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	models "github.com/yloveya1/metricsalert/internal/model"
 )
 
 // MockIRuntimeAgent is a mock of IRuntimeAgent interface.
@@ -33,30 +34,16 @@ func (m *MockIRuntimeAgent) EXPECT() *MockIRuntimeAgentMockRecorder {
 	return m.recorder
 }
 
-// GetCounterMetrics mocks base method.
-func (m *MockIRuntimeAgent) GetCounterMetrics() map[string]int64 {
+// GetMetrics mocks base method.
+func (m *MockIRuntimeAgent) GetMetrics() []*models.Metrics {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCounterMetrics")
-	ret0, _ := ret[0].(map[string]int64)
+	ret := m.ctrl.Call(m, "GetMetrics")
+	ret0, _ := ret[0].([]*models.Metrics)
 	return ret0
 }
 
-// GetCounterMetrics indicates an expected call of GetCounterMetrics.
-func (mr *MockIRuntimeAgentMockRecorder) GetCounterMetrics() *gomock.Call {
+// GetMetrics indicates an expected call of GetMetrics.
+func (mr *MockIRuntimeAgentMockRecorder) GetMetrics() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounterMetrics", reflect.TypeOf((*MockIRuntimeAgent)(nil).GetCounterMetrics))
-}
-
-// GetGaugeMetrics mocks base method.
-func (m *MockIRuntimeAgent) GetGaugeMetrics() map[string]float64 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGaugeMetrics")
-	ret0, _ := ret[0].(map[string]float64)
-	return ret0
-}
-
-// GetGaugeMetrics indicates an expected call of GetGaugeMetrics.
-func (mr *MockIRuntimeAgentMockRecorder) GetGaugeMetrics() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGaugeMetrics", reflect.TypeOf((*MockIRuntimeAgent)(nil).GetGaugeMetrics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetrics", reflect.TypeOf((*MockIRuntimeAgent)(nil).GetMetrics))
 }
