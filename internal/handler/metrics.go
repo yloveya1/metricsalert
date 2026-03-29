@@ -5,13 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/yloveya1/metricsalert/internal/logger"
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
+	"go.uber.org/zap"
 )
 
 const (
@@ -39,29 +41,21 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if len(body) == 0 {
-		http.Error(w, "empty body", http.StatusBadRequest)
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
 		return
 	}
 
 	var metric models.Metrics
-	if err = json.Unmarshal(body, &metric); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = h.metricCtrl.UpdateMetric(&metric); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := h.metricCtrl.UpdateMetric(&metric); err != nil {
+		// логировать внутрь
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -71,23 +65,14 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if len(body) == 0 {
-		http.Error(w, "empty body", http.StatusBadRequest)
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
 		return
 	}
 
 	var metric models.Metrics
-	if err = json.Unmarshal(body, &metric); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -98,13 +83,17 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// тут лучше залогировать
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(res)
+
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		logger.Log.Error("encode metric error", zap.Error(err))
+	}
 }
 
 func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {

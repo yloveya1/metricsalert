@@ -15,17 +15,18 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			t1 := time.Now()
+			defer func() {
+				logger.Log.Info(
+					"got incoming HTTP request",
+					zap.String("uri", r.RequestURI),
+					zap.String("method", r.Method),
+					zap.String("duration", time.Since(t1).String()),
+					zap.Int("status", ww.Status()),
+					zap.Int("size", ww.BytesWritten()),
+				)
+			}()
 
 			next.ServeHTTP(ww, r)
-
-			logger.Log.Info(
-				"got incoming HTTP request",
-				zap.String("uri", r.RequestURI),
-				zap.String("method", r.Method),
-				zap.String("duration", time.Since(t1).String()),
-				zap.Int("status", ww.Status()),
-				zap.Int("size", ww.BytesWritten()),
-			)
 		}
 
 		return http.HandlerFunc(fn)
