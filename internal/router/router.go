@@ -9,8 +9,8 @@ import (
 func New(h *handler.Handler) chi.Router {
 	r := chi.NewRouter()
 
-	r.Use(middleware.Recoverer)
 	r.Use(h.WithLogging())
+	r.Use(middleware.Recoverer)
 
 	r.Get("/", h.GetMetricList)
 
