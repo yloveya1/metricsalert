@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
 )
@@ -26,8 +27,13 @@ type HTTPClient struct {
 
 func NewClient(cfg Config) *HTTPClient {
 	return &HTTPClient{
-		cfg:    cfg,
-		client: http.DefaultClient, // todo настроить
+		cfg: cfg,
+		client: &http.Client{Timeout: 5 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     20 * time.Second,
+			},
+		},
 	}
 }
 
