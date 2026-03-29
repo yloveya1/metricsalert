@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -38,13 +39,28 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
+	if r.Header.Get("Content-Type") != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		http.Error(w, "empty body", http.StatusBadRequest)
+		return
+	}
+
 	var metric models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+	if err = json.Unmarshal(body, &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := h.metricCtrl.UpdateMetric(&metric); err != nil {
+	if err = h.metricCtrl.UpdateMetric(&metric); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -55,8 +71,23 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
+	if r.Header.Get("Content-Type") != "application/json" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		http.Error(w, "empty body", http.StatusBadRequest)
+		return
+	}
+
 	var metric models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+	if err = json.Unmarshal(body, &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
