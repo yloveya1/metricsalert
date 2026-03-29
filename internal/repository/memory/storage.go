@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"errors"
 	"sync"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
@@ -65,6 +66,10 @@ func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
 func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
+
+	if metric.Delta == nil {
+		return errors.New("metrics counter delta is nil")
+	}
 
 	val, ok := ms.counter[metric.ID]
 	if !ok {
