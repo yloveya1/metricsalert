@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -45,7 +46,7 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 			metrics = a.runtimeAgent.GetMetrics()
 		case <-ticker.C:
 			if err := a.sendMetric(metrics); err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					continue
 				}
 				return err
