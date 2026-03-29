@@ -7,7 +7,9 @@ import (
 
 	"github.com/yloveya1/metricsalert/internal/agent"
 	"github.com/yloveya1/metricsalert/internal/client"
+	"github.com/yloveya1/metricsalert/internal/logger"
 	models "github.com/yloveya1/metricsalert/internal/model"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
@@ -54,6 +56,7 @@ func (a *Agent) sendMetric(metrics []*models.Metrics) error {
 	for _, value := range metrics {
 		err := a.cl.SendMetric(value)
 		if err != nil {
+			logger.Log.Info("metric send failed", zap.Any("value", *value))
 			return fmt.Errorf("failed to send metric: %w", err)
 		}
 	}
