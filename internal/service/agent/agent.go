@@ -42,10 +42,11 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 
 func (a *Agent) sendMetric() error {
 	for id, value := range a.runtimeAgent.GetGaugeMetrics() {
+		v := value
 		metric := &models.Metrics{
 			ID:    id,
 			MType: models.Gauge,
-			Value: &value,
+			Value: &v,
 		}
 		err := a.cl.SendMetric(metric)
 		if err != nil {
@@ -54,10 +55,11 @@ func (a *Agent) sendMetric() error {
 	}
 
 	for id, value := range a.runtimeAgent.GetCounterMetrics() {
+		v := value
 		metric := &models.Metrics{
 			ID:    id,
 			MType: models.Counter,
-			Delta: &value,
+			Delta: &v,
 		}
 		err := a.cl.SendMetric(metric)
 		if err != nil {
