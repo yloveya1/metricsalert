@@ -32,7 +32,7 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 	defer ticker.Stop()
 
 	tickerP := time.NewTicker(a.pollInterval)
-	defer ticker.Stop()
+	defer tickerP.Stop()
 
 	var metrics []*models.Metrics
 
@@ -52,6 +52,9 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 
 func (a *Agent) sendMetric(metrics []*models.Metrics) error {
 	for _, value := range metrics {
+		if value == nil {
+			continue
+		}
 		err := a.cl.SendMetric(value)
 		if err != nil {
 			return fmt.Errorf("failed to send metric %v: %w", *value, err)

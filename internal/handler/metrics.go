@@ -83,7 +83,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		// тут лучше залогировать
+
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
@@ -91,7 +91,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(res); err != nil {
+	if err = json.NewEncoder(w).Encode(res); err != nil {
 		logger.Log.Error("encode metric error", zap.Error(err))
 	}
 }
