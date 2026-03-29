@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/yloveya1/metricsalert/internal/agent"
@@ -44,7 +45,7 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 			metrics = a.runtimeAgent.GetMetrics()
 		case <-ticker.C:
 			if err := a.sendMetric(metrics); err != nil {
-				return err
+				log.Printf("agent: send metrics: %w", err)
 			}
 		}
 	}
