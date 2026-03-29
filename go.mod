@@ -1,6 +1,6 @@
 module github.com/yloveya1/metricsalert
 
-go 1.23.0
+go 1.25.0
 
 require (
 	github.com/caarlos0/env/v6 v6.10.1
@@ -8,6 +8,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/zap v1.27.1
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
 require (

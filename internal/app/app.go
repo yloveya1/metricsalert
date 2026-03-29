@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -15,9 +17,10 @@ import (
 	"github.com/yloveya1/metricsalert/internal/service/agent"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
-func RunServer() error {
+func RunServer(ctx context.Context) error {
 	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
 		return err
 	}
@@ -33,7 +36,30 @@ func RunServer() error {
 	h := handler.New(service)
 	r := router.New(h)
 
-	return http.ListenAndServe(cfg.Address, r)
+	eg, egCtx := errgroup.WithContext(ctx)
+
+	server := &http.Server{
+		Addr:    cfg.Address,
+		Handler: r,
+	}
+
+	eg.Go(func() error {
+		if err = server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("failed to start server: %w", err)
+		}
+
+		return nil
+	})
+
+	eg.Go(func() error {
+		<-egCtx.Done()
+		shCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		return server.Shutdown(shCtx)
+	})
+
+	return eg.Wait()
 }
 
 func RunAgent(ctx context.Context) error {

@@ -3,14 +3,31 @@ package main
 import (
 	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/yloveya1/metricsalert/internal/app"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	ctx := context.Background()
-	err := app.RunAgent(ctx)
-	if err != nil {
-		log.Fatal(err)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		select {
+		case <-ctx.Done():
+			stop()
+			return nil
+		case <-egCtx.Done():
+			return nil
+		}
+	})
+
+	eg.Go(func() error { return app.RunAgent(egCtx) })
+
+	if err := eg.Wait(); err != nil {
+		log.Println("failed to run agent", zap.Error(err))
+		return
 	}
 }
