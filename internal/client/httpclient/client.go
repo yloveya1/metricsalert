@@ -31,6 +31,7 @@ func NewClient(cfg Config) *HTTPClient {
 		client: &http.Client{Timeout: 5 * time.Second,
 			Transport: &http.Transport{
 				MaxIdleConnsPerHost: 10,
+				DisableKeepAlives:   true,
 				IdleConnTimeout:     20 * time.Second,
 			},
 		},

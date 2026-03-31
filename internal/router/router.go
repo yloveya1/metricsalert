@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/yloveya1/metricsalert/internal/handler"
 )
 
@@ -9,7 +10,7 @@ func New(h *handler.Handler) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(h.WithLogging())
-	//r.Use(middleware.Recoverer)
+	r.Use(middleware.Recoverer)
 
 	r.Get("/", h.GetMetricList)
 
