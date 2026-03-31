@@ -2,7 +2,8 @@ package logger
 
 import "go.uber.org/zap"
 
-var Log *zap.Logger = zap.NewNop()
+var ServerLog *zap.Logger = zap.NewNop()
+var AgentLog *zap.Logger = zap.NewNop()
 
 // Initialize инициализирует синглтон логера с необходимым уровнем логирования.
 func Initialize(level string) error {
@@ -21,6 +22,6 @@ func Initialize(level string) error {
 		return err
 	}
 	// устанавливаем синглтон
-	Log = zl
+	ServerLog = zl
 	return nil
 }

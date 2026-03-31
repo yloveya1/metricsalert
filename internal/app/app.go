@@ -63,6 +63,10 @@ func RunServer(ctx context.Context) error {
 }
 
 func RunAgent(ctx context.Context) error {
+	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
+		return err
+	}
+
 	cfg, err := config.GetAgentConfig()
 	if err != nil {
 		return err

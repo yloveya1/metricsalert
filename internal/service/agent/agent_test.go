@@ -25,68 +25,107 @@ func Test_NewAgent(t *testing.T) {
 
 func Test_StartAgent(t *testing.T) {
 	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	mockCl := mocks.NewMockIClient(ctrl)
 	runtimeAgent := mocks.NewMockIRuntimeAgent(ctrl)
 
-	type args struct {
-		ctx     context.Context
-		cancel  context.CancelFunc
-		metrics []*models.Metrics
-	}
 	tests := []struct {
 		name    string
-		args    args
+		prepare func(
+			cl *mocks.MockIClient,
+			ra *mocks.MockIRuntimeAgent,
+			cancel context.CancelFunc,
+		)
 		wantErr bool
-		prepare func(args args)
 	}{
 		{
 			name: "success send metric",
-			args: args{
-				metrics: []*models.Metrics{{
-					ID:    "test",
-					MType: "gauge",
-					Value: nil,
-				}},
-			},
-			wantErr: false,
-			prepare: func(args args) {
-				runtimeAgent.EXPECT().GetMetrics().Return(args.metrics)
-				for _, value := range args.metrics {
-					mockCl.EXPECT().SendMetric(value).Return(nil)
+			prepare: func(cl *mocks.MockIClient, ra *mocks.MockIRuntimeAgent, cancel context.CancelFunc) {
+				metrics := []*models.Metrics{
+					{
+						ID:    "test",
+						MType: models.Gauge,
+					},
 				}
 
-				args.cancel()
+				ra.EXPECT().
+					GetMetrics().
+					Return(metrics).
+					AnyTimes()
+
+				called := false
+				cl.EXPECT().
+					SendMetric(metrics[0]).
+					DoAndReturn(func(*models.Metrics) error {
+						if !called {
+							called = true
+							cancel()
+						}
+						return nil
+					}).
+					AnyTimes()
 			},
+			wantErr: false,
 		},
 		{
-			name: "error",
-			args: args{
-				metrics: []*models.Metrics{{
-					ID:    "test",
-					MType: "gauge",
-					Value: nil,
-				}},
-			},
-			wantErr: true,
-			prepare: func(args args) {
-				runtimeAgent.EXPECT().GetMetrics().Return(args.metrics).AnyTimes()
-				for _, value := range args.metrics {
-					mockCl.EXPECT().SendMetric(value).Return(errors.New("gauge error"))
+			name: "client send error does not stop agent",
+			prepare: func(cl *mocks.MockIClient, ra *mocks.MockIRuntimeAgent, cancel context.CancelFunc) {
+				metrics := []*models.Metrics{
+					{
+						ID:    "test",
+						MType: models.Gauge,
+					},
 				}
+
+				ra.EXPECT().
+					GetMetrics().
+					Return(metrics).
+					AnyTimes()
+
+				called := false
+				cl.EXPECT().
+					SendMetric(metrics[0]).
+					DoAndReturn(func(*models.Metrics) error {
+						if !called {
+							called = true
+							cancel()
+						}
+						return errors.New("send error")
+					}).
+					AnyTimes()
 			},
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ag := Agent{cl: mockCl, runtimeAgent: runtimeAgent, reportInterval: 500 * time.Millisecond, pollInterval: 100 * time.Millisecond}
-			tt.args.ctx, tt.args.cancel = context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
 			if tt.prepare != nil {
-				tt.prepare(tt.args)
+				tt.prepare(mockCl, runtimeAgent, cancel)
 			}
 
-			err := ag.StartAgent(tt.args.ctx)
-			assert.Equal(t, tt.wantErr, err != nil)
+			ag := Agent{
+				cl:             mockCl,
+				runtimeAgent:   runtimeAgent,
+				reportInterval: 20 * time.Millisecond,
+				pollInterval:   10 * time.Millisecond,
+			}
+
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- ag.StartAgent(ctx)
+			}()
+
+			select {
+			case err := <-errCh:
+				assert.Equal(t, tt.wantErr, err != nil)
+			case <-time.After(500 * time.Millisecond):
+				t.Fatal("StartAgent did not stop")
+			}
 		})
 	}
 }

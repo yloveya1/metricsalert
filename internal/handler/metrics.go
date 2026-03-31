@@ -93,7 +93,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err = json.NewEncoder(w).Encode(res); err != nil {
-		logger.Log.Error("encode metric error", zap.Error(err))
+		logger.ServerLog.Error("encode metric error", zap.Error(err))
 	}
 }
 

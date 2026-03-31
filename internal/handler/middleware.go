@@ -16,7 +16,7 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 
 			t1 := time.Now()
 			defer func() {
-				logger.Log.Info(
+				logger.ServerLog.Info(
 					"got incoming HTTP request",
 					zap.String("uri", r.RequestURI),
 					zap.String("method", r.Method),

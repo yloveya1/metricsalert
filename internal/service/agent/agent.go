@@ -2,12 +2,13 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/yloveya1/metricsalert/internal/agent"
 	"github.com/yloveya1/metricsalert/internal/client"
+	"github.com/yloveya1/metricsalert/internal/logger"
 	models "github.com/yloveya1/metricsalert/internal/model"
+	"go.uber.org/zap"
 )
 
 type Agent struct {
@@ -51,15 +52,31 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 }
 
 func (a *Agent) sendMetric(metrics []*models.Metrics) error {
-	for _, value := range metrics {
-		if value == nil {
+	const (
+		maxRetries = 3
+		retryDelay = 100 * time.Millisecond
+	)
+
+	for _, m := range metrics {
+		if m == nil {
 			continue
 		}
-		err := a.cl.SendMetric(value)
-		if err != nil {
-			return fmt.Errorf("failed to send metric %v: %w", *value, err)
+
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			if err := a.cl.SendMetric(m); err != nil {
+				logger.AgentLog.Warn(
+					"failed to send metric",
+					zap.String("id", m.ID),
+					zap.String("type", m.MType),
+					zap.Int("attempt", attempt),
+					zap.Error(err),
+				)
+				time.Sleep(retryDelay)
+				continue
+			}
+
+			break
 		}
 	}
-
 	return nil
 }
