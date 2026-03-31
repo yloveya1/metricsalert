@@ -44,39 +44,24 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 		case <-tickerP.C:
 			metrics = a.runtimeAgent.GetMetrics()
 		case <-ticker.C:
-			if err := a.sendMetric(metrics); err != nil {
-				return err
-			}
+			a.sendMetric(metrics)
+
 		}
 	}
 }
 
-func (a *Agent) sendMetric(metrics []*models.Metrics) error {
-	const (
-		maxRetries = 3
-		retryDelay = 100 * time.Millisecond
-	)
-
+func (a *Agent) sendMetric(metrics []*models.Metrics) {
 	for _, m := range metrics {
 		if m == nil {
 			continue
 		}
 
-		for attempt := 1; attempt <= maxRetries; attempt++ {
-			if err := a.cl.SendMetric(m); err != nil {
-				logger.AgentLog.Warn(
-					"failed to send metric",
-					zap.String("id", m.ID),
-					zap.String("type", m.MType),
-					zap.Int("attempt", attempt),
-					zap.Error(err),
-				)
-				time.Sleep(retryDelay)
-				continue
-			}
-
-			break
+		if err := a.cl.SendMetric(m); err != nil {
+			logger.AgentLog.Warn(
+				"failed to send metric",
+				zap.String("id", m.ID),
+				zap.String("type", m.MType),
+			)
 		}
 	}
-	return nil
 }
