@@ -45,7 +45,6 @@ func (a *Agent) StartAgent(ctx context.Context) error {
 			metrics = a.runtimeAgent.GetMetrics()
 		case <-ticker.C:
 			a.sendMetric(metrics)
-
 		}
 	}
 }

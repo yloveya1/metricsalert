@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -58,7 +59,12 @@ func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error
 		return nil, fmt.Errorf("marshal metrics error, err: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, resURL, bytes.NewBuffer(body))
+	compressBody, err := compress(body)
+	if err != nil {
+		return nil, fmt.Errorf("compress metrics error, err: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, resURL, compressBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -71,6 +77,27 @@ func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error
 	}
 
 	return resp, nil
+}
+
+func compress(data []byte) (*bytes.Buffer, error) {
+	var buf bytes.Buffer
+
+	w, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip writer, err: %w", err)
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed compress data: %v", err)
+	}
+
+	return &buf, nil
 }
 
 func formURL(url string, metrics *models.Metrics) (string, error) {
