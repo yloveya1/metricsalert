@@ -70,6 +70,8 @@ func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := h.client.Do(req)
 	if err != nil {
