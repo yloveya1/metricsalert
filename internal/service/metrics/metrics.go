@@ -92,13 +92,13 @@ func (s *Service) runPeriodSafe(ctx context.Context) {
 	}
 }
 
-func (m *Service) saveMetrics() error {
-	metrics, err := m.storage.GetMetricList()
+func (s *Service) saveMetrics() error {
+	metrics, err := s.storage.GetMetricList()
 	if err != nil {
 		return fmt.Errorf("failed to get metrics, err: %w", err)
 	}
 
-	err = m.fileStorage.WriteMetrics(metrics)
+	err = s.fileStorage.WriteMetrics(metrics)
 	if err != nil {
 		return fmt.Errorf("failed to write metrics, err: %w", err)
 	}
