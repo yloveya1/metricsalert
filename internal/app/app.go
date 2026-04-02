@@ -12,6 +12,7 @@ import (
 	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
 	"github.com/yloveya1/metricsalert/internal/logger"
+	"github.com/yloveya1/metricsalert/internal/repository/filestore"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
 	"github.com/yloveya1/metricsalert/internal/router"
 	"github.com/yloveya1/metricsalert/internal/service/agent"
@@ -31,7 +32,8 @@ func RunServer(ctx context.Context) error {
 	}
 
 	storage := memory.NewMemStorage()
-	service := metrics.NewService(storage)
+	fileStorage := filestore.NewFileStorage(cfg.FileStoragePath)
+	service := metrics.NewService(ctx, storage, fileStorage, cfg)
 
 	h := handler.New(service)
 	r := router.New(h)
