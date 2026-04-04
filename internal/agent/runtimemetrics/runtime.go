@@ -42,7 +42,7 @@ const (
 )
 
 type RuntimeCollector struct {
-	mu      sync.RWMutex
+	mu      sync.Mutex
 	counter int64
 }
 
@@ -51,8 +51,8 @@ func NewRuntimeCollector() *RuntimeCollector {
 }
 
 func (rc *RuntimeCollector) GetMetrics() []*models.Metrics {
-	rc.mu.RLock()
-	defer rc.mu.RUnlock()
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
 
 	rc.counter++
 	metRuntime := runtime.MemStats{}

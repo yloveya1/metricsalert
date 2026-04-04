@@ -11,28 +11,22 @@ import (
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
 	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
-	"github.com/yloveya1/metricsalert/internal/logger"
 	"github.com/yloveya1/metricsalert/internal/repository/filestore"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
 	"github.com/yloveya1/metricsalert/internal/router"
 	"github.com/yloveya1/metricsalert/internal/service/agent"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 func RunServer(ctx context.Context) error {
-	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
-		return err
-	}
-
 	cfg, err := config.GetServerConfig()
 	if err != nil {
 		return err
 	}
 
 	storage := memory.NewMemStorage()
-	fileStorage := filestore.NewFileStorage(cfg.FileStoragePath)
+	fileStorage := filestore.NewFileStorage(*cfg.FileStoragePath)
 	service := metrics.NewService(ctx, storage, fileStorage, cfg)
 
 	h := handler.New(service)
@@ -41,7 +35,7 @@ func RunServer(ctx context.Context) error {
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	server := &http.Server{
-		Addr:    cfg.Address,
+		Addr:    *cfg.Address,
 		Handler: r,
 	}
 
@@ -65,18 +59,14 @@ func RunServer(ctx context.Context) error {
 }
 
 func RunAgent(ctx context.Context) error {
-	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
-		return err
-	}
-
 	cfg, err := config.GetAgentConfig()
 	if err != nil {
 		return err
 	}
 
-	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + cfg.Address})
+	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address})
 	rc := runtimemetrics.NewRuntimeCollector()
 
-	ag := agent.NewAgent(cl, rc, time.Duration(cfg.ReportInterval)*time.Second, time.Duration(cfg.PollInterval)*time.Second)
+	ag := agent.NewAgent(cl, rc, time.Duration(*cfg.ReportInterval)*time.Second, time.Duration(*cfg.PollInterval)*time.Second)
 	return ag.StartAgent(ctx)
 }

@@ -8,16 +8,16 @@ import (
 )
 
 type AgentCfg struct {
-	Address        string `env:"ADDRESS"`
-	ReportInterval int    `env:"REPORT_INTERVAL"`
-	PollInterval   int    `env:"POLL_INTERVAL"`
+	Address        *string `env:"ADDRESS"`
+	ReportInterval *int    `env:"REPORT_INTERVAL"`
+	PollInterval   *int    `env:"POLL_INTERVAL"`
 }
 
 type ServerCfg struct {
-	Address         string `env:"ADDRESS"`
-	StoreInterval   int    `env:"STORE_INTERVAL"`
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	Restore         bool   `env:"RESTORE"`
+	Address         *string `env:"ADDRESS"`
+	StoreInterval   *int    `env:"STORE_INTERVAL"`
+	FileStoragePath *string `env:"FILE_STORAGE_PATH"`
+	Restore         *bool   `env:"RESTORE"`
 }
 
 func GetAgentConfig() (cfg AgentCfg, err error) {
@@ -26,17 +26,20 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 		return AgentCfg{}, fmt.Errorf("failed to parse agent env: %w", err)
 	}
 
-	if cfg.Address == "" {
-		flag.StringVar(&cfg.Address, "a", "localhost:8080", "http server address")
+	if cfg.Address == nil {
+		cfg.Address = ptr("localhost:8080")
 	}
+	flag.StringVar(cfg.Address, "a", *cfg.Address, "http server address")
 
-	if cfg.ReportInterval == 0 {
-		flag.IntVar(&cfg.ReportInterval, "r", 10, "report interval")
+	if cfg.ReportInterval == nil {
+		cfg.ReportInterval = ptr(10)
 	}
+	flag.IntVar(cfg.ReportInterval, "r", *cfg.ReportInterval, "report interval")
 
-	if cfg.PollInterval == 0 {
-		flag.IntVar(&cfg.PollInterval, "p", 2, "poll interval")
+	if cfg.PollInterval == nil {
+		cfg.PollInterval = ptr(2)
 	}
+	flag.IntVar(cfg.PollInterval, "p", *cfg.PollInterval, "poll interval")
 
 	flag.Parse()
 
@@ -49,23 +52,31 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 		return ServerCfg{}, fmt.Errorf("failed to parse server env: %w", err)
 	}
 
-	if cfg.Address == "" {
-		flag.StringVar(&cfg.Address, "a", "localhost:8080", "http server address")
+	if cfg.Address == nil {
+		cfg.Address = ptr("localhost:8080")
 	}
+	flag.StringVar(cfg.Address, "a", *cfg.Address, "http server address")
 
-	if cfg.StoreInterval == 0 {
-		flag.IntVar(&cfg.StoreInterval, "i", 300, "store interval")
+	if cfg.StoreInterval == nil {
+		cfg.StoreInterval = ptr(300)
 	}
+	flag.IntVar(cfg.StoreInterval, "i", *cfg.StoreInterval, "store interval")
 
-	if len(cfg.FileStoragePath) == 0 {
-		flag.StringVar(&cfg.FileStoragePath, "f", "filepath.txt", "file storage path")
+	if cfg.FileStoragePath == nil {
+		cfg.FileStoragePath = ptr("filepath.txt")
 	}
+	flag.StringVar(cfg.FileStoragePath, "f", *cfg.FileStoragePath, "file storage path")
 
-	if !cfg.Restore {
-		flag.BoolVar(&cfg.Restore, "r", false, "restore metrics")
+	if cfg.Restore == nil {
+		cfg.Restore = ptr(false)
 	}
+	flag.BoolVar(cfg.Restore, "r", *cfg.Restore, "restore metrics")
 
 	flag.Parse()
 
 	return cfg, nil
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

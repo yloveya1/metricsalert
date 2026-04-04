@@ -50,11 +50,11 @@ func NewService(ctx context.Context, storage repository.IStorage,
 		cfg:         cfg,
 	}
 
-	if cfg.StoreInterval > 0 {
+	if *cfg.StoreInterval > 0 {
 		go srv.runPeriodSafe(ctx)
 	}
 
-	if !cfg.Restore {
+	if !*cfg.Restore {
 		return srv
 	}
 
@@ -74,7 +74,7 @@ func NewService(ctx context.Context, storage repository.IStorage,
 }
 
 func (s *Service) runPeriodSafe(ctx context.Context) {
-	ticker := time.NewTicker(time.Duration(s.cfg.StoreInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(*s.cfg.StoreInterval) * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -107,19 +107,24 @@ func (s *Service) saveMetrics() error {
 }
 
 func (s *Service) UpdateMetric(metric *models.Metrics) error {
-	if s.cfg.StoreInterval == 0 {
-		err := s.saveMetrics()
-		if err != nil {
-			return fmt.Errorf("failed to save to file, err: %w", err)
-		}
-	}
-
 	switch metric.MType {
 	case models.Counter:
-		return s.storage.UpdateCounterMetric(metric)
+		if err := s.storage.UpdateCounterMetric(metric); err != nil {
+			return err
+		}
 	case models.Gauge:
-		return s.storage.UpdateGaugeMetric(metric)
+		if err := s.storage.UpdateGaugeMetric(metric); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown metric type: %s", metric.MType)
 	}
+
+	if *s.cfg.StoreInterval == 0 {
+		if err := s.saveMetrics(); err != nil {
+			return fmt.Errorf("failed to save to file: %w", err)
+		}
+	}
+
+	return nil
 }
