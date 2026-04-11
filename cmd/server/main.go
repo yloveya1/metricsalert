@@ -1,14 +1,38 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os/signal"
+	"syscall"
 
 	"github.com/yloveya1/metricsalert/internal/app"
+	"github.com/yloveya1/metricsalert/internal/logger"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
-	err := app.RunServer()
-	if err != nil {
-		log.Fatal(err)
+	if err := logger.Initialize(zap.InfoLevel.String()); err != nil {
+		log.Fatalf("failed to initialize logger, err: %v", err)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		select {
+		case <-ctx.Done():
+			stop()
+			return nil
+		case <-egCtx.Done():
+			return nil
+		}
+	})
+
+	eg.Go(func() error { return app.RunServer(egCtx) })
+
+	if err := eg.Wait(); err != nil {
+		logger.ServerLog.Error("failed to run server", zap.Error(err))
+		return
 	}
 }

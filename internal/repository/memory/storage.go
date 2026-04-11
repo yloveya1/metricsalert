@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"errors"
 	"sync"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
@@ -21,17 +22,19 @@ func NewMemStorage() repository.IStorage {
 	}
 }
 
-func (ms *MemStorage) GetMetricList() ([]models.Metrics, error) {
+func (ms *MemStorage) GetMetricList() ([]*models.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
-	metricList := make([]models.Metrics, 0, len(ms.counter)+len(ms.gauge))
+	metricList := make([]*models.Metrics, 0, len(ms.counter)+len(ms.gauge))
 	for _, v := range ms.counter {
-		metricList = append(metricList, v)
+		value := v
+		metricList = append(metricList, &value)
 	}
 
 	for _, v := range ms.gauge {
-		metricList = append(metricList, v)
+		value := v
+		metricList = append(metricList, &value)
 	}
 
 	return metricList, nil
@@ -65,6 +68,10 @@ func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
 func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
+
+	if metric.Delta == nil {
+		return errors.New("metrics counter delta is nil")
+	}
 
 	val, ok := ms.counter[metric.ID]
 	if !ok {

@@ -1,22 +1,34 @@
 package metrics
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	config "github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/mocks"
 	models "github.com/yloveya1/metricsalert/internal/model"
+	"github.com/yloveya1/metricsalert/internal/repository/filestore"
 )
 
 func Test_New(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := mocks.NewMockIStorage(ctrl)
-
-	s := NewService(store)
+	filestorage := filestore.NewFileStorage("test")
+	s := NewService(context.Background(), store, filestorage, config.ServerCfg{
+		Address:         ptr("address"),
+		StoreInterval:   ptr(0),
+		FileStoragePath: ptr("filapath"),
+		Restore:         ptr(false),
+	})
 
 	assert.NotEmpty(t, s)
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }
 
 func TestService_UpdateMetric(t *testing.T) {
@@ -26,7 +38,7 @@ func TestService_UpdateMetric(t *testing.T) {
 	tests := []struct {
 		name    string
 		metric  *models.Metrics
-		prepare func(store *mocks.MockIStorage, metric *models.Metrics)
+		prepare func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics)
 		wantErr bool
 	}{
 		{
@@ -34,7 +46,9 @@ func TestService_UpdateMetric(t *testing.T) {
 			metric: &models.Metrics{
 				MType: models.Counter,
 			},
-			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
+				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(nil)
 				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
 			},
 			wantErr: false,
@@ -44,7 +58,9 @@ func TestService_UpdateMetric(t *testing.T) {
 			metric: &models.Metrics{
 				MType: models.Gauge,
 			},
-			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
+				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(nil)
 				store.EXPECT().UpdateGaugeMetric(metric).Return(nil)
 			},
 			wantErr: false,
@@ -54,7 +70,7 @@ func TestService_UpdateMetric(t *testing.T) {
 			metric: &models.Metrics{
 				MType: models.Counter,
 			},
-			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
 				store.EXPECT().UpdateCounterMetric(metric).Return(errors.New("error"))
 			},
 			wantErr: true,
@@ -64,8 +80,31 @@ func TestService_UpdateMetric(t *testing.T) {
 			metric: &models.Metrics{
 				MType: models.Gauge,
 			},
-			prepare: func(store *mocks.MockIStorage, metric *models.Metrics) {
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
 				store.EXPECT().UpdateGaugeMetric(metric).Return(errors.New("error"))
+			},
+			wantErr: true,
+		},
+		{
+			name: "failed getting metric list",
+			metric: &models.Metrics{
+				MType: models.Counter,
+			},
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
+				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, errors.New("error"))
+				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
+			},
+			wantErr: true,
+		},
+		{
+			name: "failed write metrics",
+			metric: &models.Metrics{
+				MType: models.Counter,
+			},
+			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
+				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(errors.New("error"))
+				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
 			},
 			wantErr: true,
 		},
@@ -80,12 +119,20 @@ func TestService_UpdateMetric(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store := mocks.NewMockIStorage(ctrl)
+			filestorage := mocks.NewMockIFile(ctrl)
 			s := &Service{
-				storage: store,
+				fileStorage: filestorage,
+				storage:     store,
+				cfg: config.ServerCfg{
+					Address:         ptr("address"),
+					StoreInterval:   ptr(0),
+					FileStoragePath: ptr("filapath"),
+					Restore:         ptr(false),
+				},
 			}
 
 			if tt.prepare != nil {
-				tt.prepare(store, tt.metric)
+				tt.prepare(store, filestorage, tt.metric)
 			}
 
 			err := s.UpdateMetric(tt.metric)

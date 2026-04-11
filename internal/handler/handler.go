@@ -12,7 +12,7 @@ import (
 var templatesFS embed.FS
 
 type Handler struct {
-	metric      controller.IMetricController
+	metricCtrl  controller.IMetricController
 	metricsTmpl *template.Template
 }
 
@@ -20,7 +20,7 @@ func New(metric controller.IMetricController) *Handler {
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 
 	return &Handler{
-		metric: metric,
+		metricCtrl: metric,
 		metricsTmpl: template.Must(
 			template.
 				New("metrics.html").

@@ -50,10 +50,10 @@ func (mr *MockIStorageMockRecorder) GetMetricByID(metric interface{}) *gomock.Ca
 }
 
 // GetMetricList mocks base method.
-func (m *MockIStorage) GetMetricList() ([]models.Metrics, error) {
+func (m *MockIStorage) GetMetricList() ([]*models.Metrics, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMetricList")
-	ret0, _ := ret[0].([]models.Metrics)
+	ret0, _ := ret[0].([]*models.Metrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -90,4 +90,56 @@ func (m *MockIStorage) UpdateGaugeMetric(metric *models.Metrics) error {
 func (mr *MockIStorageMockRecorder) UpdateGaugeMetric(metric interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGaugeMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateGaugeMetric), metric)
+}
+
+// MockIFile is a mock of IFile interface.
+type MockIFile struct {
+	ctrl     *gomock.Controller
+	recorder *MockIFileMockRecorder
+}
+
+// MockIFileMockRecorder is the mock recorder for MockIFile.
+type MockIFileMockRecorder struct {
+	mock *MockIFile
+}
+
+// NewMockIFile creates a new mock instance.
+func NewMockIFile(ctrl *gomock.Controller) *MockIFile {
+	mock := &MockIFile{ctrl: ctrl}
+	mock.recorder = &MockIFileMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIFile) EXPECT() *MockIFileMockRecorder {
+	return m.recorder
+}
+
+// UploadMetrics mocks base method.
+func (m *MockIFile) UploadMetrics() ([]*models.Metrics, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadMetrics")
+	ret0, _ := ret[0].([]*models.Metrics)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UploadMetrics indicates an expected call of UploadMetrics.
+func (mr *MockIFileMockRecorder) UploadMetrics() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadMetrics", reflect.TypeOf((*MockIFile)(nil).UploadMetrics))
+}
+
+// WriteMetrics mocks base method.
+func (m *MockIFile) WriteMetrics(metrics []*models.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WriteMetrics", metrics)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// WriteMetrics indicates an expected call of WriteMetrics.
+func (mr *MockIFileMockRecorder) WriteMetrics(metrics interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WriteMetrics", reflect.TypeOf((*MockIFile)(nil).WriteMetrics), metrics)
 }

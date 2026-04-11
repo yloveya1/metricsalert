@@ -1,15 +1,19 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/yloveya1/metricsalert/internal/logger"
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
+	"go.uber.org/zap"
 )
 
 const (
@@ -18,14 +22,14 @@ const (
 	ValuePath = "value"
 )
 
-func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 	metric, err := getMetricInfoFromRq(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = h.metric.UpdateMetric(metric)
+	err = h.metricCtrl.UpdateMetric(metric)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -34,7 +38,66 @@ func (h *Handler) UpdateMetric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
+		return
+	}
+
+	var metric models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.metricCtrl.UpdateMetric(&metric); err != nil {
+		// логировать внутрь
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(metric)
+}
+
+func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
+		return
+	}
+
+	var metric models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res, err := h.metricCtrl.GetMetric(&metric)
+	if err != nil {
+		if errors.Is(err, metrics.ErrMetricNotFound) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err = json.NewEncoder(w).Encode(res); err != nil {
+		logger.ServerLog.Error("encode metric error", zap.Error(err))
+	}
+}
+
+func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 	mType := chi.URLParam(r, TypePath)
 	if mType != models.Gauge && mType != models.Counter {
 		http.Error(w, "invalid metric type", http.StatusBadRequest)
@@ -43,7 +106,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 
 	name := chi.URLParam(r, NamePath)
 
-	resp, err := h.metric.GetMetric(&models.Metrics{
+	resp, err := h.metricCtrl.GetMetric(&models.Metrics{
 		ID:    name,
 		MType: mType,
 	})
@@ -76,7 +139,7 @@ func (h *Handler) GetMetric(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricList(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.metric.GetMetricList()
+	resp, err := h.metricCtrl.GetMetricList()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

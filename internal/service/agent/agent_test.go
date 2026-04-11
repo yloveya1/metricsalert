@@ -3,11 +3,13 @@ package agent
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/yloveya1/metricsalert/internal/mocks"
 	models "github.com/yloveya1/metricsalert/internal/model"
 )
@@ -17,115 +19,129 @@ func Test_NewAgent(t *testing.T) {
 	mockCl := mocks.NewMockIClient(ctrl)
 	mockCollector := mocks.NewMockIRuntimeAgent(ctrl)
 
-	ag := NewAgent(mockCl, mockCollector, 1)
+	ag := NewAgent(mockCl, mockCollector, 1, 1)
 
 	assert.Equal(t, mockCl, ag.cl)
 	assert.Equal(t, mockCollector, ag.runtimeAgent)
 }
 
 func Test_StartAgent(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCl := mocks.NewMockIClient(ctrl)
-	runtimeAgent := mocks.NewMockIRuntimeAgent(ctrl)
-
-	type args struct {
-		ctx     context.Context
-		cancel  context.CancelFunc
-		gauge   map[string]float64
-		counter map[string]int64
-	}
 	tests := []struct {
 		name    string
-		args    args
-		wantErr bool
-		prepare func(args args)
+		prepare func(
+			t *testing.T,
+			cl *mocks.MockIClient,
+			ra *mocks.MockIRuntimeAgent,
+			cancel context.CancelFunc,
+		)
 	}{
 		{
 			name: "success send metric",
-			args: args{
-				gauge:   map[string]float64{"test": 1.1},
-				counter: map[string]int64{"test": 1},
-			},
-			wantErr: false,
-			prepare: func(args args) {
-				runtimeAgent.EXPECT().GetGaugeMetrics().Return(args.gauge)
-				for id, value := range args.gauge {
-					mockCl.EXPECT().SendMetric(&models.Metrics{
-						ID:    id,
+			prepare: func(
+				t *testing.T,
+				cl *mocks.MockIClient,
+				ra *mocks.MockIRuntimeAgent,
+				cancel context.CancelFunc,
+			) {
+				metrics := []*models.Metrics{
+					{
+						ID:    "test",
 						MType: models.Gauge,
-						Value: &value,
-					}).Return(nil)
+					},
 				}
 
-				runtimeAgent.EXPECT().GetCounterMetrics().Return(args.counter)
-				for id, value := range args.counter {
-					mockCl.EXPECT().SendMetric(&models.Metrics{
-						ID:    id,
-						MType: models.Counter,
-						Delta: &value,
-					}).Return(nil)
-				}
+				ra.EXPECT().
+					GetMetrics().
+					Return(metrics).
+					AnyTimes()
 
-				args.cancel()
+				var once sync.Once
+				cl.EXPECT().
+					SendMetric(gomock.Any()).
+					DoAndReturn(func(m *models.Metrics) error {
+						require.NotNil(t, m)
+						require.Equal(t, "test", m.ID)
+						require.Equal(t, models.Gauge, m.MType)
+
+						once.Do(func() {
+							cancel()
+						})
+
+						return nil
+					}).
+					AnyTimes()
 			},
 		},
 		{
-			name: "gauge error",
-			args: args{
-				gauge:   map[string]float64{"test": 1.1},
-				counter: map[string]int64{"test": 1},
-			},
-			wantErr: true,
-			prepare: func(args args) {
-				runtimeAgent.EXPECT().GetGaugeMetrics().Return(args.gauge)
-				for id, value := range args.gauge {
-					mockCl.EXPECT().SendMetric(&models.Metrics{
-						ID:    id,
+			name: "client error does not stop agent",
+			prepare: func(
+				t *testing.T,
+				cl *mocks.MockIClient,
+				ra *mocks.MockIRuntimeAgent,
+				cancel context.CancelFunc,
+			) {
+				metrics := []*models.Metrics{
+					{
+						ID:    "test",
 						MType: models.Gauge,
-						Value: &value,
-					}).Return(errors.New("gauge error"))
-				}
-			},
-		},
-		{
-			name: "counter error",
-			args: args{
-				gauge:   map[string]float64{"test": 1.1},
-				counter: map[string]int64{"test": 1},
-			},
-			wantErr: true,
-			prepare: func(args args) {
-				runtimeAgent.EXPECT().GetGaugeMetrics().Return(args.gauge)
-				for id, value := range args.gauge {
-					mockCl.EXPECT().SendMetric(&models.Metrics{
-						ID:    id,
-						MType: models.Gauge,
-						Value: &value,
-					}).Return(nil)
+					},
 				}
 
-				runtimeAgent.EXPECT().GetCounterMetrics().Return(args.counter)
-				for id, value := range args.counter {
-					mockCl.EXPECT().SendMetric(&models.Metrics{
-						ID:    id,
-						MType: models.Counter,
-						Delta: &value,
-					}).Return(errors.New("counter error"))
-				}
+				ra.EXPECT().
+					GetMetrics().
+					Return(metrics).
+					AnyTimes()
+
+				var once sync.Once
+				cl.EXPECT().
+					SendMetric(gomock.Any()).
+					DoAndReturn(func(m *models.Metrics) error {
+						require.NotNil(t, m)
+						require.Equal(t, "test", m.ID)
+						require.Equal(t, models.Gauge, m.MType)
+
+						once.Do(func() {
+							cancel()
+						})
+
+						return errors.New("send error")
+					}).
+					AnyTimes()
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ag := Agent{cl: mockCl, runtimeAgent: runtimeAgent, reportInterval: 100 * time.Millisecond}
-			tt.args.ctx, tt.args.cancel = context.WithCancel(context.Background())
-			if tt.prepare != nil {
-				tt.prepare(tt.args)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			mockCl := mocks.NewMockIClient(ctrl)
+			runtimeAgent := mocks.NewMockIRuntimeAgent(ctrl)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			tt.prepare(t, mockCl, runtimeAgent, cancel)
+
+			ag := Agent{
+				cl:             mockCl,
+				runtimeAgent:   runtimeAgent,
+				reportInterval: 20 * time.Millisecond,
+				pollInterval:   10 * time.Millisecond,
 			}
 
-			err := ag.StartAgent(tt.args.ctx)
-			assert.Equal(t, tt.wantErr, err != nil)
+			errCh := make(chan error, 1)
+			go func() {
+				errCh <- ag.StartAgent(ctx)
+			}()
+
+			select {
+			case err := <-errCh:
+				require.NoError(t, err)
+			case <-time.After(1 * time.Second):
+				t.Fatal("StartAgent did not stop")
+			}
 		})
 	}
 }
