@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -22,7 +23,7 @@ func NewMemStorage() repository.IStorage {
 	}
 }
 
-func (ms *MemStorage) GetMetricList() ([]*models.Metrics, error) {
+func (ms *MemStorage) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -40,7 +41,7 @@ func (ms *MemStorage) GetMetricList() ([]*models.Metrics, error) {
 	return metricList, nil
 }
 
-func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, error) {
+func (ms *MemStorage) GetMetricByID(ctx context.Context, metric *models.Metrics) (models.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -57,7 +58,7 @@ func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, err
 	return models.Metrics{}, metrics.ErrMetricNotFound
 }
 
-func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
+func (ms *MemStorage) UpdateGaugeMetric(ctx context.Context, metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -65,7 +66,7 @@ func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
 	return nil
 }
 
-func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
+func (ms *MemStorage) UpdateCounterMetric(ctx context.Context, metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -82,5 +83,9 @@ func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	*val.Delta += *metric.Delta
 	ms.counter[metric.ID] = val
 
+	return nil
+}
+
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }

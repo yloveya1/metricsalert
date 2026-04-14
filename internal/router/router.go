@@ -25,5 +25,7 @@ func New(h *handler.Handler) chi.Router {
 		r.Get("/{type}/{name}", h.GetMetricFromPath)
 	})
 
+	r.Get("/ping", h.Ping)
+
 	return r
 }
