@@ -21,6 +21,7 @@ var (
 
 type Service struct {
 	storage     repository.IStorage
+	dbStorage   repository.IStorage
 	fileStorage repository.IFile
 	cfg         config.ServerCfg
 }
@@ -42,11 +43,11 @@ func (s *Service) GetMetric(metric *models.Metrics) (models.Metrics, error) {
 	return s.storage.GetMetricByID(metric)
 }
 
-func NewService(ctx context.Context, storage repository.IStorage,
-	fileStorage repository.IFile, cfg config.ServerCfg) controller.IMetricController {
+func NewService(ctx context.Context, storage repository.IStorage, fileStorage repository.IFile, dbStorage repository.IStorage, cfg config.ServerCfg) controller.IMetricController {
 	srv := &Service{
 		storage:     storage,
 		fileStorage: fileStorage,
+		dbStorage:   dbStorage,
 		cfg:         cfg,
 	}
 
@@ -126,5 +127,13 @@ func (s *Service) UpdateMetric(metric *models.Metrics) error {
 		}
 	}
 
+	return nil
+}
+
+func (s *Service) Ping(ctx context.Context) error {
+	err := s.dbStorage.Ping(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to ping storage, err: %w", err)
+	}
 	return nil
 }

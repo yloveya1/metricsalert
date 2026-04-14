@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -62,6 +63,20 @@ func (m *MockIStorage) GetMetricList() ([]*models.Metrics, error) {
 func (mr *MockIStorageMockRecorder) GetMetricList() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricList", reflect.TypeOf((*MockIStorage)(nil).GetMetricList))
+}
+
+// Ping mocks base method.
+func (m *MockIStorage) Ping(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Ping", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Ping indicates an expected call of Ping.
+func (mr *MockIStorageMockRecorder) Ping(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockIStorage)(nil).Ping), ctx)
 }
 
 // UpdateCounterMetric mocks base method.

@@ -187,6 +187,16 @@ func getMetricInfoFromRq(r *http.Request) (*models.Metrics, error) {
 	}
 }
 
+func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.metricCtrl.Ping(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to ping metric, err: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 var templFunc = template.FuncMap{
 	"val": func(p *int64) int64 {
 		if p != nil {
