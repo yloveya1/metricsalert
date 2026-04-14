@@ -29,7 +29,7 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.metricCtrl.UpdateMetric(metric)
+	err = h.metricCtrl.UpdateMetric(r.Context(), metric)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -53,7 +53,7 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.metricCtrl.UpdateMetric(&metric); err != nil {
+	if err := h.metricCtrl.UpdateMetric(r.Context(), &metric); err != nil {
 		// логировать внутрь
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
@@ -78,7 +78,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.metricCtrl.GetMetric(&metric)
+	res, err := h.metricCtrl.GetMetric(r.Context(), &metric)
 	if err != nil {
 		if errors.Is(err, metrics.ErrMetricNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -106,7 +106,7 @@ func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 
 	name := chi.URLParam(r, NamePath)
 
-	resp, err := h.metricCtrl.GetMetric(&models.Metrics{
+	resp, err := h.metricCtrl.GetMetric(r.Context(), &models.Metrics{
 		ID:    name,
 		MType: mType,
 	})
@@ -139,7 +139,7 @@ func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricList(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.metricCtrl.GetMetricList()
+	resp, err := h.metricCtrl.GetMetricList(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

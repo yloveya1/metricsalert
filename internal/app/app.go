@@ -11,6 +11,7 @@ import (
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
 	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
+	"github.com/yloveya1/metricsalert/internal/repository"
 	"github.com/yloveya1/metricsalert/internal/repository/filestore"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
 	"github.com/yloveya1/metricsalert/internal/repository/pg"
@@ -26,15 +27,19 @@ func RunServer(ctx context.Context) error {
 		return err
 	}
 
-	storage := memory.NewMemStorage()
-	fileStorage := filestore.NewFileStorage(*cfg.FileStoragePath)
-
-	dbStorage, err := pg.NewDatabase(ctx, *cfg.DBConn)
-	if err != nil {
-		return fmt.Errorf("failed to connect database, err: %w", err)
+	var storage repository.IStorage
+	if cfg.DBConn != nil {
+		storage, err = pg.NewDatabase(ctx, *cfg.DBConn)
+		if err != nil {
+			return fmt.Errorf("failed to connect database, err: %w", err)
+		}
+	} else {
+		storage = memory.NewMemStorage()
 	}
 
-	service := metrics.NewService(ctx, storage, fileStorage, dbStorage, cfg)
+	fileStorage := filestore.NewFileStorage(*cfg.FileStoragePath)
+
+	service := metrics.NewService(ctx, storage, fileStorage, cfg)
 
 	h := handler.New(service)
 	r := router.New(h)

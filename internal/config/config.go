@@ -76,6 +76,8 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 	if cfg.DBConn == nil {
 		cfg.DBConn = ptr("postgres://postgres:mypassword@localhost:5432/mydb")
 	}
+	flag.StringVar(cfg.DBConn, "d", *cfg.DBConn, "db connection")
+
 	flag.Parse()
 
 	return cfg, nil

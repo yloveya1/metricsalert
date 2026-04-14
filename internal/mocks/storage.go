@@ -36,33 +36,33 @@ func (m *MockIStorage) EXPECT() *MockIStorageMockRecorder {
 }
 
 // GetMetricByID mocks base method.
-func (m *MockIStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, error) {
+func (m *MockIStorage) GetMetricByID(ctx context.Context, metrics *models.Metrics) (models.Metrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetricByID", metric)
+	ret := m.ctrl.Call(m, "GetMetricByID", ctx, metrics)
 	ret0, _ := ret[0].(models.Metrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetricByID indicates an expected call of GetMetricByID.
-func (mr *MockIStorageMockRecorder) GetMetricByID(metric interface{}) *gomock.Call {
+func (mr *MockIStorageMockRecorder) GetMetricByID(ctx, metrics interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByID", reflect.TypeOf((*MockIStorage)(nil).GetMetricByID), metric)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricByID", reflect.TypeOf((*MockIStorage)(nil).GetMetricByID), ctx, metrics)
 }
 
 // GetMetricList mocks base method.
-func (m *MockIStorage) GetMetricList() ([]*models.Metrics, error) {
+func (m *MockIStorage) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMetricList")
+	ret := m.ctrl.Call(m, "GetMetricList", ctx)
 	ret0, _ := ret[0].([]*models.Metrics)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetMetricList indicates an expected call of GetMetricList.
-func (mr *MockIStorageMockRecorder) GetMetricList() *gomock.Call {
+func (mr *MockIStorageMockRecorder) GetMetricList(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricList", reflect.TypeOf((*MockIStorage)(nil).GetMetricList))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMetricList", reflect.TypeOf((*MockIStorage)(nil).GetMetricList), ctx)
 }
 
 // Ping mocks base method.
@@ -80,31 +80,31 @@ func (mr *MockIStorageMockRecorder) Ping(ctx interface{}) *gomock.Call {
 }
 
 // UpdateCounterMetric mocks base method.
-func (m *MockIStorage) UpdateCounterMetric(metric *models.Metrics) error {
+func (m *MockIStorage) UpdateCounterMetric(ctx context.Context, metrics *models.Metrics) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateCounterMetric", metric)
+	ret := m.ctrl.Call(m, "UpdateCounterMetric", ctx, metrics)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateCounterMetric indicates an expected call of UpdateCounterMetric.
-func (mr *MockIStorageMockRecorder) UpdateCounterMetric(metric interface{}) *gomock.Call {
+func (mr *MockIStorageMockRecorder) UpdateCounterMetric(ctx, metrics interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCounterMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateCounterMetric), metric)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCounterMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateCounterMetric), ctx, metrics)
 }
 
 // UpdateGaugeMetric mocks base method.
-func (m *MockIStorage) UpdateGaugeMetric(metric *models.Metrics) error {
+func (m *MockIStorage) UpdateGaugeMetric(ctx context.Context, metrics *models.Metrics) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateGaugeMetric", metric)
+	ret := m.ctrl.Call(m, "UpdateGaugeMetric", ctx, metrics)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateGaugeMetric indicates an expected call of UpdateGaugeMetric.
-func (mr *MockIStorageMockRecorder) UpdateGaugeMetric(metric interface{}) *gomock.Call {
+func (mr *MockIStorageMockRecorder) UpdateGaugeMetric(ctx, metrics interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGaugeMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateGaugeMetric), metric)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGaugeMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateGaugeMetric), ctx, metrics)
 }
 
 // MockIFile is a mock of IFile interface.

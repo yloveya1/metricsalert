@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	config "github.com/yloveya1/metricsalert/internal/config"
+	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/mocks"
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/repository/filestore"
@@ -17,7 +17,7 @@ func Test_New(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := mocks.NewMockIStorage(ctrl)
 	filestorage := filestore.NewFileStorage("test")
-	s := NewService(context.Background(), store, filestorage, nil, config.ServerCfg{
+	s := NewService(context.Background(), store, filestorage, config.ServerCfg{
 		Address:         ptr("address"),
 		StoreInterval:   ptr(0),
 		FileStoragePath: ptr("filapath"),
@@ -47,9 +47,9 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Counter,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				store.EXPECT().GetMetricList(gomock.Any()).Return([]*models.Metrics{metric}, nil)
 				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(nil)
-				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
+				store.EXPECT().UpdateCounterMetric(gomock.Any(), metric).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -59,9 +59,9 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Gauge,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				store.EXPECT().GetMetricList(gomock.Any()).Return([]*models.Metrics{metric}, nil)
 				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(nil)
-				store.EXPECT().UpdateGaugeMetric(metric).Return(nil)
+				store.EXPECT().UpdateGaugeMetric(gomock.Any(), metric).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -71,7 +71,7 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Counter,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().UpdateCounterMetric(metric).Return(errors.New("error"))
+				store.EXPECT().UpdateCounterMetric(gomock.Any(), metric).Return(errors.New("error"))
 			},
 			wantErr: true,
 		},
@@ -81,7 +81,7 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Gauge,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().UpdateGaugeMetric(metric).Return(errors.New("error"))
+				store.EXPECT().UpdateGaugeMetric(gomock.Any(), metric).Return(errors.New("error"))
 			},
 			wantErr: true,
 		},
@@ -91,8 +91,8 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Counter,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, errors.New("error"))
-				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
+				store.EXPECT().GetMetricList(gomock.Any()).Return([]*models.Metrics{metric}, errors.New("error"))
+				store.EXPECT().UpdateCounterMetric(gomock.Any(), metric).Return(nil)
 			},
 			wantErr: true,
 		},
@@ -102,9 +102,9 @@ func TestService_UpdateMetric(t *testing.T) {
 				MType: models.Counter,
 			},
 			prepare: func(store *mocks.MockIStorage, filestorage *mocks.MockIFile, metric *models.Metrics) {
-				store.EXPECT().GetMetricList().Return([]*models.Metrics{metric}, nil)
+				store.EXPECT().GetMetricList(gomock.Any()).Return([]*models.Metrics{metric}, nil)
 				filestorage.EXPECT().WriteMetrics([]*models.Metrics{metric}).Return(errors.New("error"))
-				store.EXPECT().UpdateCounterMetric(metric).Return(nil)
+				store.EXPECT().UpdateCounterMetric(gomock.Any(), metric).Return(nil)
 			},
 			wantErr: true,
 		},
@@ -135,7 +135,7 @@ func TestService_UpdateMetric(t *testing.T) {
 				tt.prepare(store, filestorage, tt.metric)
 			}
 
-			err := s.UpdateMetric(tt.metric)
+			err := s.UpdateMetric(context.Background(), tt.metric)
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
 	}
