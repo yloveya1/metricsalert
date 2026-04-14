@@ -74,7 +74,7 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 	flag.BoolVar(cfg.Restore, "r", *cfg.Restore, "restore metrics")
 
 	if cfg.DBConn == nil {
-		cfg.DBConn = ptr("postgres://postgres:mypassword@localhost:5432/mydb")
+		cfg.DBConn = ptr("")
 	}
 	flag.StringVar(cfg.DBConn, "d", *cfg.DBConn, "db connection")
 

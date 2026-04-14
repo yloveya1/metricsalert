@@ -28,7 +28,7 @@ func RunServer(ctx context.Context) error {
 	}
 
 	var storage repository.IStorage
-	if cfg.DBConn != nil {
+	if *cfg.DBConn == "" {
 		storage, err = pg.NewDatabase(ctx, *cfg.DBConn)
 		if err != nil {
 			return fmt.Errorf("failed to connect database, err: %w", err)
