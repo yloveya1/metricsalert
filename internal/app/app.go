@@ -29,7 +29,7 @@ func RunServer(ctx context.Context) error {
 	storage := memory.NewMemStorage()
 	fileStorage := filestore.NewFileStorage(*cfg.FileStoragePath)
 
-	dbStorage, err := pg.NewDatabase(ctx, *cfg.DbConn)
+	dbStorage, err := pg.NewDatabase(ctx, *cfg.DBConn)
 	if err != nil {
 		return fmt.Errorf("failed to connect database, err: %w", err)
 	}
