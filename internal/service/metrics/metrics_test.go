@@ -17,7 +17,7 @@ func Test_New(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := mocks.NewMockIStorage(ctrl)
 	filestorage := filestore.NewFileStorage("test")
-	s := NewService(context.Background(), store, filestorage, config.ServerCfg{
+	s := NewService(context.Background(), store, filestorage, nil, config.ServerCfg{
 		Address:         ptr("address"),
 		StoreInterval:   ptr(0),
 		FileStoragePath: ptr("filapath"),

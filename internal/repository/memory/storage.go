@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -82,5 +83,9 @@ func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	*val.Delta += *metric.Delta
 	ms.counter[metric.ID] = val
 
+	return nil
+}
+
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }
