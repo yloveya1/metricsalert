@@ -71,10 +71,15 @@ func (h *Handler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var metricList []*models.Metrics
-	if err := json.NewDecoder(r.Body).Decode(&metricList); err != nil {
+	var bodyList []models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&bodyList); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	var metricList []*models.Metrics
+	for _, m := range bodyList {
+		metricList = append(metricList, &m)
 	}
 
 	if err := h.metricCtrl.UpdateMetricList(r.Context(), metricList); err != nil {
