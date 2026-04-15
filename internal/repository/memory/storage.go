@@ -90,7 +90,7 @@ func (ms *MemStorage) UpdateMetricList(ctx context.Context, metrics []*models.Me
 	for _, m := range metrics {
 		switch m.MType {
 		case models.Counter:
-			err := ms.UpdateGaugeMetric(ctx, m)
+			err := ms.UpdateCounterMetric(ctx, m)
 			if err != nil {
 				return fmt.Errorf("failed to update counter metric, err: %w", err)
 			}
