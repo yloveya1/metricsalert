@@ -25,8 +25,8 @@ type Service struct {
 	cfg         config.ServerCfg
 }
 
-func (s *Service) GetMetricList() ([]*models.Metrics, error) {
-	metricList, err := s.storage.GetMetricList()
+func (s *Service) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
+	metricList, err := s.storage.GetMetricList(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -38,12 +38,12 @@ func (s *Service) GetMetricList() ([]*models.Metrics, error) {
 	return metricList, nil
 }
 
-func (s *Service) GetMetric(metric *models.Metrics) (models.Metrics, error) {
-	return s.storage.GetMetricByID(metric)
+func (s *Service) GetMetric(ctx context.Context, metric *models.Metrics) (models.Metrics, error) {
+	return s.storage.GetMetricByID(ctx, metric)
 }
 
-func NewService(ctx context.Context, storage repository.IStorage,
-	fileStorage repository.IFile, cfg config.ServerCfg) controller.IMetricController {
+func NewService(ctx context.Context, storage repository.IStorage, fileStorage repository.IFile,
+	cfg config.ServerCfg) controller.IMetricController {
 	srv := &Service{
 		storage:     storage,
 		fileStorage: fileStorage,
@@ -64,10 +64,8 @@ func NewService(ctx context.Context, storage repository.IStorage,
 		return srv
 	}
 
-	for _, metric := range metricList {
-		if err = srv.UpdateMetric(metric); err != nil {
-			logger.ServerLog.Error("failed to update metric", zap.Error(err))
-		}
+	if err = srv.UpdateMetricList(ctx, metricList); err != nil {
+		logger.ServerLog.Error("failed to update metric", zap.Error(err))
 	}
 
 	return srv
@@ -83,7 +81,7 @@ func (s *Service) runPeriodSafe(ctx context.Context) {
 			return
 
 		case <-ticker.C:
-			if err := s.saveMetrics(); err != nil {
+			if err := s.saveMetrics(ctx); err != nil {
 				logger.ServerLog.Error("failed to save metrics", zap.Error(err))
 			} else {
 				logger.ServerLog.Info("saved metrics")
@@ -92,8 +90,8 @@ func (s *Service) runPeriodSafe(ctx context.Context) {
 	}
 }
 
-func (s *Service) saveMetrics() error {
-	metrics, err := s.storage.GetMetricList()
+func (s *Service) saveMetrics(ctx context.Context) error {
+	metrics, err := s.storage.GetMetricList(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get metrics, err: %w", err)
 	}
@@ -106,14 +104,23 @@ func (s *Service) saveMetrics() error {
 	return nil
 }
 
-func (s *Service) UpdateMetric(metric *models.Metrics) error {
+func (s *Service) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	err := s.storage.UpdateMetricList(ctx, metrics)
+	if err != nil {
+		logger.ServerLog.Error("failed to update metrics", zap.Error(err))
+		return err
+	}
+	return nil
+}
+
+func (s *Service) UpdateMetric(ctx context.Context, metric *models.Metrics) error {
 	switch metric.MType {
 	case models.Counter:
-		if err := s.storage.UpdateCounterMetric(metric); err != nil {
+		if err := s.storage.UpdateCounterMetric(ctx, metric); err != nil {
 			return err
 		}
 	case models.Gauge:
-		if err := s.storage.UpdateGaugeMetric(metric); err != nil {
+		if err := s.storage.UpdateGaugeMetric(ctx, metric); err != nil {
 			return err
 		}
 	default:
@@ -121,10 +128,18 @@ func (s *Service) UpdateMetric(metric *models.Metrics) error {
 	}
 
 	if *s.cfg.StoreInterval == 0 {
-		if err := s.saveMetrics(); err != nil {
+		if err := s.saveMetrics(ctx); err != nil {
 			return fmt.Errorf("failed to save to file: %w", err)
 		}
 	}
 
+	return nil
+}
+
+func (s *Service) Ping(ctx context.Context) error {
+	err := s.storage.Ping(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to ping storage, err: %w", err)
+	}
 	return nil
 }
