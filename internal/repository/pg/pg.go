@@ -14,6 +14,17 @@ import (
 	"github.com/yloveya1/metricsalert/internal/repository"
 )
 
+const (
+	UpdateMetricQuery = `
+        INSERT INTO metrics (name, type, delta, value)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (name) DO UPDATE SET
+            type  = EXCLUDED.type,
+            delta = EXCLUDED.delta,
+            value = EXCLUDED.value,
+            updated_at = NOW();`
+)
+
 type Database struct {
 	pg *pgxpool.Pool
 }
@@ -87,10 +98,10 @@ func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error
 	for rows.Next() {
 		m := &models.Metrics{}
 		err = rows.Scan(
-			m.ID,
-			m.MType,
-			m.Delta,
-			m.Value)
+			&m.ID,
+			&m.MType,
+			&m.Delta,
+			&m.Value)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan metric row: %w", err)
 		}
@@ -108,10 +119,10 @@ func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error
 func (db *Database) GetMetricByID(ctx context.Context, metrics *models.Metrics) (models.Metrics, error) {
 	m := models.Metrics{}
 	err := db.pg.QueryRow(ctx, `SELECT name, type, delta, value FROM metrics where name = $1`, metrics.ID).Scan(
-		m.ID,
-		m.MType,
-		m.Delta,
-		m.Value,
+		&m.ID,
+		&m.MType,
+		&m.Delta,
+		&m.Value,
 	)
 	if err != nil {
 		return models.Metrics{}, fmt.Errorf("failed to query row metric: %w", err)
@@ -130,17 +141,34 @@ func (db *Database) Ping(ctx context.Context) error {
 }
 
 func (db *Database) updateMetric(ctx context.Context, metric *models.Metrics) error {
-	_, err := db.pg.Exec(ctx, `
-        INSERT INTO metrics (name, type, delta, value) 
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (name) DO UPDATE SET
-            type  = EXCLUDED.type,
-            delta = EXCLUDED.delta,
-            value = EXCLUDED.value`,
+	_, err := db.pg.Exec(ctx, UpdateMetricQuery,
 		metric.ID, metric.MType, metric.Delta, metric.Value)
 
 	if err != nil {
 		return fmt.Errorf("failed to update %s metric: %w", metric.MType, err)
+	}
+
+	return nil
+}
+
+func (db *Database) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	tx, err := db.pg.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin tx, err: %w", err)
+	}
+
+	defer tx.Rollback(ctx)
+
+	for _, metric := range metrics {
+		_, err = tx.Exec(ctx, UpdateMetricQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
+		if err != nil {
+			return fmt.Errorf("failed to update metric: %w", err)
+		}
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to commit tx, err: %w", err)
 	}
 
 	return nil

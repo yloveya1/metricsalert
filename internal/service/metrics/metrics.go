@@ -64,10 +64,8 @@ func NewService(ctx context.Context, storage repository.IStorage, fileStorage re
 		return srv
 	}
 
-	for _, metric := range metricList {
-		if err = srv.UpdateMetric(ctx, metric); err != nil {
-			logger.ServerLog.Error("failed to update metric", zap.Error(err))
-		}
+	if err = srv.UpdateMetricList(ctx, metricList); err != nil {
+		logger.ServerLog.Error("failed to update metric", zap.Error(err))
 	}
 
 	return srv
@@ -104,6 +102,10 @@ func (s *Service) saveMetrics(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Service) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	return s.storage.UpdateMetricList(ctx, metrics)
 }
 
 func (s *Service) UpdateMetric(ctx context.Context, metric *models.Metrics) error {

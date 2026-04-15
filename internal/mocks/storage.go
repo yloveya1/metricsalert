@@ -107,6 +107,20 @@ func (mr *MockIStorageMockRecorder) UpdateGaugeMetric(ctx, metrics interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateGaugeMetric", reflect.TypeOf((*MockIStorage)(nil).UpdateGaugeMetric), ctx, metrics)
 }
 
+// UpdateMetricList mocks base method.
+func (m *MockIStorage) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMetricList", ctx, metrics)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMetricList indicates an expected call of UpdateMetricList.
+func (mr *MockIStorageMockRecorder) UpdateMetricList(ctx, metrics interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricList", reflect.TypeOf((*MockIStorage)(nil).UpdateMetricList), ctx, metrics)
+}
+
 // MockIFile is a mock of IFile interface.
 type MockIFile struct {
 	ctrl     *gomock.Controller

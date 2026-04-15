@@ -54,13 +54,36 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.metricCtrl.UpdateMetric(r.Context(), &metric); err != nil {
-		// логировать внутрь
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(metric)
+}
+
+func (h *Handler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
+		return
+	}
+
+	var metricList []*models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&metricList); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.metricCtrl.UpdateMetricList(r.Context(), metricList); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(metricList)
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {

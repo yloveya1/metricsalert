@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
@@ -82,6 +83,26 @@ func (ms *MemStorage) UpdateCounterMetric(ctx context.Context, metric *models.Me
 
 	*val.Delta += *metric.Delta
 	ms.counter[metric.ID] = val
+
+	return nil
+}
+func (ms *MemStorage) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	for _, m := range metrics {
+		switch m.MType {
+		case models.Counter:
+			err := ms.UpdateGaugeMetric(ctx, m)
+			if err != nil {
+				return fmt.Errorf("failed to update counter metric, err: %w", err)
+			}
+		case models.Gauge:
+			err := ms.UpdateGaugeMetric(ctx, m)
+			if err != nil {
+				return fmt.Errorf("failed to update gauge metric, err: %w", err)
+			}
+		default:
+			return fmt.Errorf("unknown metric type: %s", m.MType)
+		}
+	}
 
 	return nil
 }

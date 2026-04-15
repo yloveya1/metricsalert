@@ -10,6 +10,7 @@ import (
 type IStorage interface {
 	UpdateCounterMetric(ctx context.Context, metrics *models.Metrics) error
 	UpdateGaugeMetric(ctx context.Context, metrics *models.Metrics) error
+	UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error
 	GetMetricList(ctx context.Context) ([]*models.Metrics, error)
 	GetMetricByID(ctx context.Context, metrics *models.Metrics) (models.Metrics, error)
 	Ping(ctx context.Context) error
