@@ -105,7 +105,12 @@ func (s *Service) saveMetrics(ctx context.Context) error {
 }
 
 func (s *Service) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
-	return s.storage.UpdateMetricList(ctx, metrics)
+	err := s.storage.UpdateMetricList(ctx, metrics)
+	if err != nil {
+		logger.ServerLog.Error("failed to update metrics", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (s *Service) UpdateMetric(ctx context.Context, metric *models.Metrics) error {
