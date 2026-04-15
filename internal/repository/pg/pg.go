@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/repository"
+	"github.com/yloveya1/metricsalert/internal/service/metrics"
 )
 
 const (
@@ -116,16 +117,20 @@ func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error
 	return metrics, nil
 }
 
-func (db *Database) GetMetricByID(ctx context.Context, metrics *models.Metrics) (models.Metrics, error) {
+func (db *Database) GetMetricByID(ctx context.Context, metric *models.Metrics) (models.Metrics, error) {
 	m := models.Metrics{}
-	err := db.pg.QueryRow(ctx, `SELECT name, type, delta, value FROM metrics where name = $1`, metrics.ID).Scan(
+	err := db.pg.QueryRow(ctx, `SELECT name, type, delta, value FROM metrics where name = $1`, metric.ID).Scan(
 		&m.ID,
 		&m.MType,
 		&m.Delta,
 		&m.Value,
 	)
 	if err != nil {
-		return models.Metrics{}, fmt.Errorf("failed to query row metric: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Metrics{}, metrics.ErrMetricNotFound
+		}
+
+		return models.Metrics{}, fmt.Errorf("failed to send query: %w", err)
 	}
 
 	return m, nil
