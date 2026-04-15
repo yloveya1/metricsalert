@@ -20,7 +20,7 @@ const (
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (name) DO UPDATE SET
             type  = EXCLUDED.type,
-            delta = EXCLUDED.delta,
+            delta = metrics.delta + EXCLUDED.delta,
             value = EXCLUDED.value,
             updated_at = NOW();`
 )
