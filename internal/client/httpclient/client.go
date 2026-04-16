@@ -4,16 +4,22 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
+	"github.com/yloveya1/metricsalert/internal/service/metrics"
 )
 
 var (
 	updateEndpoint     = "/update/"
 	updateListEndpoint = "/updates/"
+)
+
+const (
+	maxRetries = 3
 )
 
 type Config struct {
@@ -51,18 +57,29 @@ func (h *HTTPClient) SendMetric(metric *models.Metrics) error {
 	return nil
 }
 
-func (h *HTTPClient) SendMetricList(metrics []*models.Metrics) error {
-	resp, err := h.sendRequest(updateListEndpoint, metrics)
-	if err != nil {
-		return fmt.Errorf("request error, err: %w", err)
-	}
-	defer resp.Body.Close()
+func (h *HTTPClient) SendMetricList(metricList []*models.Metrics) error {
+	delays := []time.Duration{1, 3, 5}
 
-	if resp.StatusCode != http.StatusOK {
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		resp, err := h.sendRequest(updateListEndpoint, metricList)
+		if err != nil {
+			if errors.Is(err, metrics.ErrConnection) && attempt < maxRetries {
+				time.Sleep(delays[attempt-1] * time.Second)
+				continue
+			}
+			return fmt.Errorf("request error, err: %w", err)
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		}
+
 		return fmt.Errorf("error status code: %d", resp.StatusCode)
 	}
 
-	return nil
+	return fmt.Errorf("max retries exceeded")
 }
 
 func (h *HTTPClient) sendRequest(endpoint string, data any) (*http.Response, error) {

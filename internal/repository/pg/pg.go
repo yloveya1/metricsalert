@@ -9,6 +9,8 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	models "github.com/yloveya1/metricsalert/internal/model"
 	"github.com/yloveya1/metricsalert/internal/repository"
@@ -89,13 +91,13 @@ func (db *Database) UpdateGaugeMetric(ctx context.Context, metric *models.Metric
 }
 
 func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
-	rows, err := db.pg.Query(ctx, `SELECT name, type, delta, value FROM metrics`)
+	rows, err := db.pg.Query(ctx, `SELECT name, type, delta, value FROM metricList`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query metric list: %w", err)
 	}
 	defer rows.Close()
 
-	var metrics []*models.Metrics
+	var metricList []*models.Metrics
 	for rows.Next() {
 		m := &models.Metrics{}
 		err = rows.Scan(
@@ -107,14 +109,14 @@ func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error
 			return nil, fmt.Errorf("failed to scan metric row: %w", err)
 		}
 
-		metrics = append(metrics, m)
+		metricList = append(metricList, m)
 	}
 
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to scan metric rows: %w", err)
 	}
 
-	return metrics, nil
+	return metricList, nil
 }
 
 func (db *Database) GetMetricByID(ctx context.Context, metric *models.Metrics) (models.Metrics, error) {
@@ -156,7 +158,7 @@ func (db *Database) updateMetric(ctx context.Context, metric *models.Metrics) er
 	return nil
 }
 
-func (db *Database) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+func (db *Database) UpdateMetricList(ctx context.Context, metricList []*models.Metrics) error {
 	tx, err := db.pg.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin tx, err: %w", err)
@@ -164,10 +166,14 @@ func (db *Database) UpdateMetricList(ctx context.Context, metrics []*models.Metr
 
 	defer tx.Rollback(ctx)
 
-	for _, metric := range metrics {
+	for _, metric := range metricList {
 		_, err = tx.Exec(ctx, UpdateMetricQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
 		if err != nil {
-			return fmt.Errorf("failed to update metric: %w", err)
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {
+				return fmt.Errorf("%w, err: %w", metrics.ErrConnection, err)
+			}
+			return err
 		}
 	}
 

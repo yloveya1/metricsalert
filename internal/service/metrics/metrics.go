@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrMetricNotFound = errors.New("metric not found")
+	ErrConnection     = errors.New("connection error")
 )
 
 type Service struct {
