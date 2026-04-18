@@ -2,7 +2,7 @@ CREATE TABLE metrics (
                          id SERIAL PRIMARY KEY,
                          name VARCHAR(255) NOT NULL,
                          type VARCHAR(20) NOT NULL,
-                         delta INT,
+                         delta BIGINT,
                          value DOUBLE PRECISION,
                          hash VARCHAR(64),
                          created_at TIMESTAMPTZ DEFAULT NOW(),

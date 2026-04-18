@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	UpdateMetricQuery = `
+	updateMetricQuery = `
         INSERT INTO metrics (name, type, delta, value)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (name) DO UPDATE SET
@@ -91,7 +91,7 @@ func (db *Database) UpdateGaugeMetric(ctx context.Context, metric *models.Metric
 }
 
 func (db *Database) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
-	rows, err := db.pg.Query(ctx, `SELECT name, type, delta, value FROM metricList`)
+	rows, err := db.pg.Query(ctx, `SELECT name, type, delta, value FROM metrics`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query metric list: %w", err)
 	}
@@ -148,7 +148,7 @@ func (db *Database) Ping(ctx context.Context) error {
 }
 
 func (db *Database) updateMetric(ctx context.Context, metric *models.Metrics) error {
-	_, err := db.pg.Exec(ctx, UpdateMetricQuery,
+	_, err := db.pg.Exec(ctx, updateMetricQuery,
 		metric.ID, metric.MType, metric.Delta, metric.Value)
 
 	if err != nil {
@@ -167,7 +167,7 @@ func (db *Database) UpdateMetricList(ctx context.Context, metricList []*models.M
 	defer tx.Rollback(ctx)
 
 	for _, metric := range metricList {
-		_, err = tx.Exec(ctx, UpdateMetricQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
+		_, err = tx.Exec(ctx, updateMetricQuery, metric.ID, metric.MType, metric.Delta, metric.Value)
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgerrcode.IsConnectionException(pgErr.Code) {

@@ -61,7 +61,7 @@ func (h *HTTPClient) SendMetricList(metricList []*models.Metrics) error {
 	delays := []time.Duration{1, 3, 5}
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		resp, err := h.sendRequest(updateListEndpoint, metricList)
+		err := h.sendMetricList(metricList)
 		if err != nil {
 			if errors.Is(err, metrics.ErrConnection) && attempt < maxRetries {
 				time.Sleep(delays[attempt-1] * time.Second)
@@ -69,17 +69,24 @@ func (h *HTTPClient) SendMetricList(metricList []*models.Metrics) error {
 			}
 			return fmt.Errorf("request error, err: %w", err)
 		}
+	}
 
-		defer resp.Body.Close()
+	return nil
+}
 
-		if resp.StatusCode == http.StatusOK {
-			return nil
-		}
+func (h *HTTPClient) sendMetricList(metricList []*models.Metrics) error {
+	resp, err := h.sendRequest(updateListEndpoint, metricList)
+	if err != nil {
+		return fmt.Errorf("request error, err: %w", err)
+	}
 
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("error status code: %d", resp.StatusCode)
 	}
 
-	return fmt.Errorf("max retries exceeded")
+	return nil
 }
 
 func (h *HTTPClient) sendRequest(endpoint string, data any) (*http.Response, error) {
