@@ -15,6 +15,8 @@ func New(h *handler.Handler) chi.Router {
 
 	r.Get("/", h.GetMetricList)
 
+	r.Post("/updates/", h.UpdateMetrics)
+
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", h.UpdateMetricFromBody)
 		r.Post("/{type}/{name}/{value}", h.UpdateMetricFromPath)
@@ -24,6 +26,8 @@ func New(h *handler.Handler) chi.Router {
 		r.Post("/", h.GetMetricFromBody)
 		r.Get("/{type}/{name}", h.GetMetricFromPath)
 	})
+
+	r.Get("/ping", h.Ping)
 
 	return r
 }

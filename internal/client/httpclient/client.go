@@ -4,17 +4,22 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
+	"github.com/yloveya1/metricsalert/internal/service/metrics"
 )
 
 var (
-	updateCounterEndpoint = "/update/%s/%s/%d"
-	updateGaugeEndpoint   = "/update/%s/%s/%g"
-	updateEndpoint        = "/update/"
+	updateEndpoint     = "/update/"
+	updateListEndpoint = "/updates/"
+)
+
+const (
+	maxRetries = 3
 )
 
 type Config struct {
@@ -39,11 +44,12 @@ func NewClient(cfg Config) *HTTPClient {
 }
 
 func (h *HTTPClient) SendMetric(metric *models.Metrics) error {
-	resp, err := h.sendRequest(metric)
+	resp, err := h.sendRequest(updateEndpoint, metric)
 	if err != nil {
 		return fmt.Errorf("request error, err: %w", err)
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("error status code: %d", resp.StatusCode)
 	}
@@ -51,10 +57,42 @@ func (h *HTTPClient) SendMetric(metric *models.Metrics) error {
 	return nil
 }
 
-func (h *HTTPClient) sendRequest(metrics *models.Metrics) (*http.Response, error) {
-	resURL := h.cfg.Host + updateEndpoint
+func (h *HTTPClient) SendMetricList(metricList []*models.Metrics) error {
+	delays := []time.Duration{1, 3, 5}
 
-	body, err := json.Marshal(metrics)
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		err := h.sendMetricList(metricList)
+		if err != nil {
+			if errors.Is(err, metrics.ErrConnection) && attempt < maxRetries {
+				time.Sleep(delays[attempt-1] * time.Second)
+				continue
+			}
+			return fmt.Errorf("request error, err: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (h *HTTPClient) sendMetricList(metricList []*models.Metrics) error {
+	resp, err := h.sendRequest(updateListEndpoint, metricList)
+	if err != nil {
+		return fmt.Errorf("request error, err: %w", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("error status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func (h *HTTPClient) sendRequest(endpoint string, data any) (*http.Response, error) {
+	resURL := h.cfg.Host + endpoint
+
+	body, err := json.Marshal(&data)
 	if err != nil {
 		return nil, fmt.Errorf("marshal metrics error, err: %w", err)
 	}
@@ -100,15 +138,4 @@ func compress(data []byte) (*bytes.Buffer, error) {
 	}
 
 	return &buf, nil
-}
-
-func formURL(url string, metrics *models.Metrics) (string, error) {
-	switch metrics.MType {
-	case models.Counter:
-		return url + fmt.Sprintf(updateCounterEndpoint, metrics.MType, metrics.ID, *metrics.Delta), nil
-	case models.Gauge:
-		return url + fmt.Sprintf(updateGaugeEndpoint, metrics.MType, metrics.ID, *metrics.Value), nil
-	default:
-		return "", fmt.Errorf("unsupported metrics type: %s", metrics.MType)
-	}
 }

@@ -29,7 +29,7 @@ func (h *Handler) UpdateMetricFromPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.metricCtrl.UpdateMetric(metric)
+	err = h.metricCtrl.UpdateMetric(r.Context(), metric)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -53,14 +53,42 @@ func (h *Handler) UpdateMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.metricCtrl.UpdateMetric(&metric); err != nil {
-		// логировать внутрь
+	if err := h.metricCtrl.UpdateMetric(r.Context(), &metric); err != nil {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(metric)
+}
+
+func (h *Handler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	ctype := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ctype, "application/json") {
+		http.Error(w, "unsupported content type", http.StatusBadRequest)
+		return
+	}
+
+	var bodyList []models.Metrics
+	if err := json.NewDecoder(r.Body).Decode(&bodyList); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var metricList []*models.Metrics
+	for _, m := range bodyList {
+		metricList = append(metricList, &m)
+	}
+
+	if err := h.metricCtrl.UpdateMetricList(r.Context(), metricList); err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(metricList)
 }
 
 func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +106,7 @@ func (h *Handler) GetMetricFromBody(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.metricCtrl.GetMetric(&metric)
+	res, err := h.metricCtrl.GetMetric(r.Context(), &metric)
 	if err != nil {
 		if errors.Is(err, metrics.ErrMetricNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -106,7 +134,7 @@ func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 
 	name := chi.URLParam(r, NamePath)
 
-	resp, err := h.metricCtrl.GetMetric(&models.Metrics{
+	resp, err := h.metricCtrl.GetMetric(r.Context(), &models.Metrics{
 		ID:    name,
 		MType: mType,
 	})
@@ -139,7 +167,7 @@ func (h *Handler) GetMetricFromPath(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetMetricList(w http.ResponseWriter, r *http.Request) {
-	resp, err := h.metricCtrl.GetMetricList()
+	resp, err := h.metricCtrl.GetMetricList(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -185,6 +213,16 @@ func getMetricInfoFromRq(r *http.Request) (*models.Metrics, error) {
 	default:
 		return nil, fmt.Errorf("invalid metric type: %s", metric.MType)
 	}
+}
+
+func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
+	err := h.metricCtrl.Ping(r.Context())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to ping metric, err: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 var templFunc = template.FuncMap{
