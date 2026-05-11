@@ -136,6 +136,7 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 	}
 }
 
+// HashMiddleware проверяет и добавляет HMAC-SHA256 заголовок
 func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(h.key) == 0 {
@@ -143,36 +144,71 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		hashHeaderValue := r.Header.Get(hashHeader)
-		if hashHeaderValue == "" {
-			next.ServeHTTP(w, r)
-			return
+		if hashHeaderValue := r.Header.Get(hashHeader); hashHeaderValue != "" {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+				return
+			}
+			r.Body.Close()
+			r.Body = io.NopCloser(bytes.NewReader(body))
+
+			hasher := hmac.New(sha256.New, []byte(h.key))
+			hasher.Write(body)
+			computedMAC := hasher.Sum(nil)
+
+			decodedMAC, err := hex.DecodeString(hashHeaderValue)
+			if err != nil {
+				http.Error(w, "Invalid hash encoding", http.StatusBadRequest)
+				return
+			}
+
+			if !hmac.Equal(computedMAC, decodedMAC) {
+				http.Error(w, "Invalid hash", http.StatusBadRequest)
+				return
+			}
 		}
 
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-			return
+		rec := &bufferredResponseWriter{
+			header: make(http.Header),
+			buf:    &bytes.Buffer{},
 		}
 
-		r.Body.Close()
-		r.Body = io.NopCloser(bytes.NewReader(body))
+		next.ServeHTTP(rec, r)
 
-		hasher := hmac.New(sha256.New, []byte(h.key))
-		hasher.Write(body)
-		computedMAC := hasher.Sum(nil)
-
-		decodedMAC, err := hex.DecodeString(hashHeaderValue)
-		if err != nil {
-			http.Error(w, "Invalid hash encoding", http.StatusBadRequest)
-			return
+		if rec.buf.Len() > 0 {
+			hasher := hmac.New(sha256.New, []byte(h.key))
+			hasher.Write(rec.buf.Bytes())
+			rec.header.Set(hashHeader, hex.EncodeToString(hasher.Sum(nil)))
 		}
 
-		if !hmac.Equal(computedMAC, decodedMAC) {
-			http.Error(w, "Invalid hash", http.StatusBadRequest)
-			return
+		for k, v := range rec.header {
+			w.Header()[k] = v
 		}
-
-		next.ServeHTTP(w, r)
+		status := rec.statusCode
+		if status == 0 {
+			status = http.StatusOK
+		}
+		w.WriteHeader(status)
+		w.Write(rec.buf.Bytes())
 	})
+}
+
+// bufferredResponseWriter накапливает ответ в памяти
+type bufferredResponseWriter struct {
+	header     http.Header
+	buf        *bytes.Buffer
+	statusCode int
+}
+
+func (b *bufferredResponseWriter) Header() http.Header {
+	return b.header
+}
+
+func (b *bufferredResponseWriter) Write(data []byte) (int, error) {
+	return b.buf.Write(data)
+}
+
+func (b *bufferredResponseWriter) WriteHeader(statusCode int) {
+	b.statusCode = statusCode
 }
