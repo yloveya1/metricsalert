@@ -45,7 +45,7 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 	flag.IntVar(cfg.PollInterval, "p", *cfg.PollInterval, "poll interval")
 
 	if cfg.Key == nil {
-		cfg.Key = ptr("key")
+		cfg.Key = ptr("")
 	}
 	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
 
@@ -86,7 +86,7 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 	flag.StringVar(cfg.DBConn, "d", *cfg.DBConn, "db connection")
 
 	if cfg.Key == nil {
-		cfg.Key = ptr("key")
+		cfg.Key = ptr("")
 	}
 	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
 
