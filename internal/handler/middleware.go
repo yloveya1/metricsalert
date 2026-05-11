@@ -1,7 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +15,8 @@ import (
 	"github.com/yloveya1/metricsalert/internal/logger"
 	"go.uber.org/zap"
 )
+
+const hashHeader = "HashSHA256"
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
@@ -125,4 +131,45 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 
 		return http.HandlerFunc(fn)
 	}
+}
+
+func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.key == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		hashHeaderValue := r.Header.Get(hashHeader)
+		if hashHeaderValue == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+			return
+		}
+
+		r.Body.Close()
+		r.Body = io.NopCloser(bytes.NewReader(body))
+
+		hasher := hmac.New(sha256.New, []byte(h.key))
+		hasher.Write(body)
+		computedMAC := hasher.Sum(nil)
+
+		decodedMAC, err := hex.DecodeString(hashHeaderValue)
+		if err != nil {
+			http.Error(w, "Invalid hash encoding", http.StatusBadRequest)
+			return
+		}
+
+		if !hmac.Equal(computedMAC, decodedMAC) {
+			http.Error(w, "Invalid hash", http.StatusBadRequest)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

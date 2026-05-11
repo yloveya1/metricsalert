@@ -11,6 +11,7 @@ type AgentCfg struct {
 	Address        *string `env:"ADDRESS"`
 	ReportInterval *int    `env:"REPORT_INTERVAL"`
 	PollInterval   *int    `env:"POLL_INTERVAL"`
+	Key            *string `env:"KEY"`
 }
 
 type ServerCfg struct {
@@ -19,6 +20,7 @@ type ServerCfg struct {
 	FileStoragePath *string `env:"FILE_STORAGE_PATH"`
 	Restore         *bool   `env:"RESTORE"`
 	DBConn          *string `env:"DATABASE_DSN"`
+	Key             *string `env:"KEY"`
 }
 
 func GetAgentConfig() (cfg AgentCfg, err error) {
@@ -41,6 +43,11 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 		cfg.PollInterval = ptr(2)
 	}
 	flag.IntVar(cfg.PollInterval, "p", *cfg.PollInterval, "poll interval")
+
+	if cfg.Key == nil {
+		cfg.Key = ptr("key")
+	}
+	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
 
 	flag.Parse()
 
@@ -77,6 +84,11 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 		cfg.DBConn = ptr("")
 	}
 	flag.StringVar(cfg.DBConn, "d", *cfg.DBConn, "db connection")
+
+	if cfg.Key == nil {
+		cfg.Key = ptr("key")
+	}
+	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
 
 	flag.Parse()
 

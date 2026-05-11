@@ -3,6 +3,9 @@ package httpclient
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,10 +23,12 @@ var (
 
 const (
 	maxRetries = 3
+	hashHeader = "HashSHA256"
 )
 
 type Config struct {
 	Host string
+	Key  string
 }
 
 type HTTPClient struct {
@@ -107,6 +112,14 @@ func (h *HTTPClient) sendRequest(endpoint string, data any) (*http.Response, err
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	if len(h.cfg.Key) != 0 {
+		hash, err := getHash(h.cfg.Key, body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get hash, err: %w", err)
+		}
+		req.Header.Set(hashHeader, hex.EncodeToString(hash))
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -117,6 +130,16 @@ func (h *HTTPClient) sendRequest(endpoint string, data any) (*http.Response, err
 	}
 
 	return resp, nil
+}
+
+func getHash(key string, body []byte) ([]byte, error) {
+	hash := hmac.New(sha256.New, []byte(key))
+	_, err := hash.Write(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write hash: %w", err)
+	}
+
+	return hash.Sum(nil), nil
 }
 
 func compress(data []byte) (*bytes.Buffer, error) {

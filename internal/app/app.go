@@ -41,7 +41,7 @@ func RunServer(ctx context.Context) error {
 
 	service := metrics.NewService(ctx, storage, fileStorage, cfg)
 
-	h := handler.New(service)
+	h := handler.New(service, *cfg.Key)
 	r := router.New(h)
 
 	eg, egCtx := errgroup.WithContext(ctx)
@@ -76,7 +76,7 @@ func RunAgent(ctx context.Context) error {
 		return err
 	}
 
-	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address})
+	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address, Key: *cfg.Key})
 	rc := runtimemetrics.NewRuntimeCollector()
 
 	ag := agent.NewAgent(cl, rc, time.Duration(*cfg.ReportInterval)*time.Second, time.Duration(*cfg.PollInterval)*time.Second)
