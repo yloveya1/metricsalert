@@ -152,7 +152,7 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		r.Body.Close()
+		//r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewReader(body))
 
 		hasher := hmac.New(sha256.New, []byte(h.key))
