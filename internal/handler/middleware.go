@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	hashHeader    = "HashSHA256"
-	contentHeader = "Content-Type"
+	hashHeader = "HashSHA256"
 )
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
@@ -136,7 +135,6 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 	}
 }
 
-// HashMiddleware проверяет и добавляет HMAC-SHA256 заголовок
 func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(h.key) == 0 {
@@ -144,12 +142,14 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if hashHeaderValue := r.Header.Get(hashHeader); hashHeaderValue != "" {
+		hashHeaderValue := r.Header.Get(hashHeader)
+		if hashHeaderValue != "" {
 			body, err := io.ReadAll(r.Body)
 			if err != nil {
 				http.Error(w, "Failed to read request body", http.StatusInternalServerError)
 				return
 			}
+
 			r.Body.Close()
 			r.Body = io.NopCloser(bytes.NewReader(body))
 
@@ -169,46 +169,6 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		rec := &bufferredResponseWriter{
-			header: make(http.Header),
-			buf:    &bytes.Buffer{},
-		}
-
-		next.ServeHTTP(rec, r)
-
-		if rec.buf.Len() > 0 {
-			hasher := hmac.New(sha256.New, []byte(h.key))
-			hasher.Write(rec.buf.Bytes())
-			rec.header.Set(hashHeader, hex.EncodeToString(hasher.Sum(nil)))
-		}
-
-		for k, v := range rec.header {
-			w.Header()[k] = v
-		}
-		status := rec.statusCode
-		if status == 0 {
-			status = http.StatusOK
-		}
-		w.WriteHeader(status)
-		w.Write(rec.buf.Bytes())
+		next.ServeHTTP(w, r)
 	})
-}
-
-// bufferredResponseWriter накапливает ответ в памяти
-type bufferredResponseWriter struct {
-	header     http.Header
-	buf        *bytes.Buffer
-	statusCode int
-}
-
-func (b *bufferredResponseWriter) Header() http.Header {
-	return b.header
-}
-
-func (b *bufferredResponseWriter) Write(data []byte) (int, error) {
-	return b.buf.Write(data)
-}
-
-func (b *bufferredResponseWriter) WriteHeader(statusCode int) {
-	b.statusCode = statusCode
 }
