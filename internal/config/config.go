@@ -47,7 +47,7 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 	if cfg.Key == nil {
 		cfg.Key = ptr("")
 	}
-	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
+	flag.StringVar(cfg.Key, "k", *cfg.Key, "hash key")
 
 	flag.Parse()
 
@@ -88,7 +88,7 @@ func GetServerConfig() (cfg ServerCfg, err error) {
 	if cfg.Key == nil {
 		cfg.Key = ptr("")
 	}
-	flag.StringVar(cfg.Key, "k", *cfg.Address, "hash key")
+	flag.StringVar(cfg.Key, "k", *cfg.Key, "hash key")
 
 	flag.Parse()
 
