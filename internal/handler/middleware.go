@@ -16,7 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const hashHeader = "HashSHA256"
+const (
+	hashHeader    = "HashSHA256"
+	contentHeader = "Content-Type"
+)
 
 // compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
 // сжимать передаваемые данные и выставлять правильные HTTP-заголовки
@@ -135,7 +138,7 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 
 func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if h.key == "" {
+		if len(r.Header.Get(contentHeader)) == 0 || len(h.key) == 0 {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -152,7 +155,7 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		//r.Body.Close()
+		r.Body.Close()
 		r.Body = io.NopCloser(bytes.NewReader(body))
 
 		hasher := hmac.New(sha256.New, []byte(h.key))
