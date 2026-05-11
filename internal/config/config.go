@@ -24,77 +24,84 @@ type ServerCfg struct {
 }
 
 func GetAgentConfig() (cfg AgentCfg, err error) {
+	defaultAddress := "localhost:8080"
+	defaultReportInterval := 10
+	defaultPollInterval := 2
+	defaultKey := ""
+
+	var address, key string
+	var reportInterval, pollInterval int
+
+	flag.StringVar(&address, "a", defaultAddress, "http server address")
+	flag.IntVar(&reportInterval, "r", defaultReportInterval, "report interval")
+	flag.IntVar(&pollInterval, "p", defaultPollInterval, "poll interval")
+	flag.StringVar(&key, "k", defaultKey, "hash key")
+	flag.Parse()
+
 	err = env.Parse(&cfg)
 	if err != nil {
 		return AgentCfg{}, fmt.Errorf("failed to parse agent env: %w", err)
 	}
 
 	if cfg.Address == nil {
-		cfg.Address = ptr("localhost:8080")
+		cfg.Address = &address
 	}
-	flag.StringVar(cfg.Address, "a", *cfg.Address, "http server address")
-
 	if cfg.ReportInterval == nil {
-		cfg.ReportInterval = ptr(10)
+		cfg.ReportInterval = &reportInterval
 	}
-	flag.IntVar(cfg.ReportInterval, "r", *cfg.ReportInterval, "report interval")
-
 	if cfg.PollInterval == nil {
-		cfg.PollInterval = ptr(2)
+		cfg.PollInterval = &pollInterval
 	}
-	flag.IntVar(cfg.PollInterval, "p", *cfg.PollInterval, "poll interval")
-
 	if cfg.Key == nil {
-		cfg.Key = ptr("")
+		cfg.Key = &key
 	}
-	flag.StringVar(cfg.Key, "k", *cfg.Key, "hash key")
-
-	flag.Parse()
 
 	return cfg, nil
 }
 
 func GetServerConfig() (cfg ServerCfg, err error) {
+	defaultAddress := "localhost:8080"
+	defaultStoreInterval := 300
+	defaultFileStoragePath := "filepath.txt"
+	defaultRestore := false
+	defaultDBConn := ""
+	defaultKey := ""
+
+	var address, fileStoragePath, dbConn, key string
+	var storeInterval int
+	var restore bool
+
+	flag.StringVar(&address, "a", defaultAddress, "http server address")
+	flag.IntVar(&storeInterval, "i", defaultStoreInterval, "store interval")
+	flag.StringVar(&fileStoragePath, "f", defaultFileStoragePath, "file storage path")
+	flag.BoolVar(&restore, "r", defaultRestore, "restore metrics")
+	flag.StringVar(&dbConn, "d", defaultDBConn, "db connection")
+	flag.StringVar(&key, "k", defaultKey, "hash key")
+	flag.Parse()
+
 	err = env.Parse(&cfg)
 	if err != nil {
 		return ServerCfg{}, fmt.Errorf("failed to parse server env: %w", err)
 	}
 
 	if cfg.Address == nil {
-		cfg.Address = ptr("localhost:8080")
+		cfg.Address = &address
 	}
-	flag.StringVar(cfg.Address, "a", *cfg.Address, "http server address")
-
 	if cfg.StoreInterval == nil {
-		cfg.StoreInterval = ptr(300)
+		cfg.StoreInterval = &storeInterval
 	}
-	flag.IntVar(cfg.StoreInterval, "i", *cfg.StoreInterval, "store interval")
-
 	if cfg.FileStoragePath == nil {
-		cfg.FileStoragePath = ptr("filepath.txt")
+		cfg.FileStoragePath = &fileStoragePath
 	}
-	flag.StringVar(cfg.FileStoragePath, "f", *cfg.FileStoragePath, "file storage path")
-
 	if cfg.Restore == nil {
-		cfg.Restore = ptr(false)
+		cfg.Restore = &restore
 	}
-	flag.BoolVar(cfg.Restore, "r", *cfg.Restore, "restore metrics")
-
 	if cfg.DBConn == nil {
-		cfg.DBConn = ptr("")
+		cfg.DBConn = &dbConn
 	}
-	flag.StringVar(cfg.DBConn, "d", *cfg.DBConn, "db connection")
-
 	if cfg.Key == nil {
-		cfg.Key = ptr("")
+		cfg.Key = &key
 	}
-	flag.StringVar(cfg.Key, "k", *cfg.Key, "hash key")
-
-	flag.Parse()
 
 	return cfg, nil
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }
