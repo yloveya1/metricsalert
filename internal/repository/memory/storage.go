@@ -1,7 +1,9 @@
 package memory
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	models "github.com/yloveya1/metricsalert/internal/model"
@@ -22,7 +24,7 @@ func NewMemStorage() repository.IStorage {
 	}
 }
 
-func (ms *MemStorage) GetMetricList() ([]*models.Metrics, error) {
+func (ms *MemStorage) GetMetricList(ctx context.Context) ([]*models.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -40,7 +42,7 @@ func (ms *MemStorage) GetMetricList() ([]*models.Metrics, error) {
 	return metricList, nil
 }
 
-func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, error) {
+func (ms *MemStorage) GetMetricByID(ctx context.Context, metric *models.Metrics) (models.Metrics, error) {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -57,7 +59,7 @@ func (ms *MemStorage) GetMetricByID(metric *models.Metrics) (models.Metrics, err
 	return models.Metrics{}, metrics.ErrMetricNotFound
 }
 
-func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
+func (ms *MemStorage) UpdateGaugeMetric(ctx context.Context, metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -65,7 +67,7 @@ func (ms *MemStorage) UpdateGaugeMetric(metric *models.Metrics) error {
 	return nil
 }
 
-func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
+func (ms *MemStorage) UpdateCounterMetric(ctx context.Context, metric *models.Metrics) error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -82,5 +84,29 @@ func (ms *MemStorage) UpdateCounterMetric(metric *models.Metrics) error {
 	*val.Delta += *metric.Delta
 	ms.counter[metric.ID] = val
 
+	return nil
+}
+func (ms *MemStorage) UpdateMetricList(ctx context.Context, metrics []*models.Metrics) error {
+	for _, m := range metrics {
+		switch m.MType {
+		case models.Counter:
+			err := ms.UpdateCounterMetric(ctx, m)
+			if err != nil {
+				return fmt.Errorf("failed to update counter metric, err: %w", err)
+			}
+		case models.Gauge:
+			err := ms.UpdateGaugeMetric(ctx, m)
+			if err != nil {
+				return fmt.Errorf("failed to update gauge metric, err: %w", err)
+			}
+		default:
+			return fmt.Errorf("unknown metric type: %s", m.MType)
+		}
+	}
+
+	return nil
+}
+
+func (ms *MemStorage) Ping(ctx context.Context) error {
 	return nil
 }

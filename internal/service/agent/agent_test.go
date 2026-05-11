@@ -57,11 +57,11 @@ func Test_StartAgent(t *testing.T) {
 
 				var once sync.Once
 				cl.EXPECT().
-					SendMetric(gomock.Any()).
-					DoAndReturn(func(m *models.Metrics) error {
+					SendMetricList(gomock.Any()).
+					DoAndReturn(func(m []*models.Metrics) error {
 						require.NotNil(t, m)
-						require.Equal(t, "test", m.ID)
-						require.Equal(t, models.Gauge, m.MType)
+						require.Equal(t, "test", m[0].ID)
+						require.Equal(t, models.Gauge, m[0].MType)
 
 						once.Do(func() {
 							cancel()
@@ -94,11 +94,11 @@ func Test_StartAgent(t *testing.T) {
 
 				var once sync.Once
 				cl.EXPECT().
-					SendMetric(gomock.Any()).
-					DoAndReturn(func(m *models.Metrics) error {
+					SendMetricList(gomock.Any()).
+					DoAndReturn(func(m []*models.Metrics) error {
 						require.NotNil(t, m)
-						require.Equal(t, "test", m.ID)
-						require.Equal(t, models.Gauge, m.MType)
+						require.Equal(t, "test", m[0].ID)
+						require.Equal(t, models.Gauge, m[0].MType)
 
 						once.Do(func() {
 							cancel()

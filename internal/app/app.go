@@ -11,8 +11,10 @@ import (
 	"github.com/yloveya1/metricsalert/internal/client/httpclient"
 	"github.com/yloveya1/metricsalert/internal/config"
 	"github.com/yloveya1/metricsalert/internal/handler"
+	"github.com/yloveya1/metricsalert/internal/repository"
 	"github.com/yloveya1/metricsalert/internal/repository/filestore"
 	"github.com/yloveya1/metricsalert/internal/repository/memory"
+	"github.com/yloveya1/metricsalert/internal/repository/pg"
 	"github.com/yloveya1/metricsalert/internal/router"
 	"github.com/yloveya1/metricsalert/internal/service/agent"
 	"github.com/yloveya1/metricsalert/internal/service/metrics"
@@ -25,11 +27,21 @@ func RunServer(ctx context.Context) error {
 		return err
 	}
 
-	storage := memory.NewMemStorage()
+	var storage repository.IStorage
+	if *cfg.DBConn != "" {
+		storage, err = pg.NewDatabase(ctx, *cfg.DBConn)
+		if err != nil {
+			return fmt.Errorf("failed to connect database, err: %w", err)
+		}
+	} else {
+		storage = memory.NewMemStorage()
+	}
+
 	fileStorage := filestore.NewFileStorage(*cfg.FileStoragePath)
+
 	service := metrics.NewService(ctx, storage, fileStorage, cfg)
 
-	h := handler.New(service)
+	h := handler.New(service, *cfg.Key)
 	r := router.New(h)
 
 	eg, egCtx := errgroup.WithContext(ctx)
@@ -64,7 +76,7 @@ func RunAgent(ctx context.Context) error {
 		return err
 	}
 
-	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address})
+	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address, Key: *cfg.Key})
 	rc := runtimemetrics.NewRuntimeCollector()
 
 	ag := agent.NewAgent(cl, rc, time.Duration(*cfg.ReportInterval)*time.Second, time.Duration(*cfg.PollInterval)*time.Second)
