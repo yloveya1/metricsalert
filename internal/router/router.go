@@ -12,7 +12,7 @@ func New(h *handler.Handler) chi.Router {
 	r.Use(h.WithLogging())
 	r.Use(middleware.Recoverer)
 	r.Use(handler.GzipMiddleware)
-	r.Use(h.HashMiddleware)
+	//r.Use(h.HashMiddleware)
 
 	r.Get("/", h.GetMetricList)
 
