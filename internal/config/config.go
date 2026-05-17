@@ -12,6 +12,7 @@ type AgentCfg struct {
 	ReportInterval *int    `env:"REPORT_INTERVAL"`
 	PollInterval   *int    `env:"POLL_INTERVAL"`
 	Key            *string `env:"KEY"`
+	RateLimit      *int    `env:"RATE_LIMIT"`
 }
 
 type ServerCfg struct {
@@ -27,15 +28,17 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 	defaultAddress := "localhost:8080"
 	defaultReportInterval := 10
 	defaultPollInterval := 2
+	defaultRateLimit := 5
 	defaultKey := ""
 
 	var address, key string
-	var reportInterval, pollInterval int
+	var reportInterval, pollInterval, rateLimit int
 
 	flag.StringVar(&address, "a", defaultAddress, "http server address")
 	flag.IntVar(&reportInterval, "r", defaultReportInterval, "report interval")
 	flag.IntVar(&pollInterval, "p", defaultPollInterval, "poll interval")
 	flag.StringVar(&key, "k", defaultKey, "hash key")
+	flag.IntVar(&rateLimit, "l", defaultRateLimit, "rate limit")
 	flag.Parse()
 
 	err = env.Parse(&cfg)
@@ -54,6 +57,9 @@ func GetAgentConfig() (cfg AgentCfg, err error) {
 	}
 	if cfg.Key == nil {
 		cfg.Key = &key
+	}
+	if cfg.RateLimit == nil {
+		cfg.RateLimit = &rateLimit
 	}
 
 	return cfg, nil

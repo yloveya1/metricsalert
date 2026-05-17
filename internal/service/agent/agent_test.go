@@ -19,7 +19,7 @@ func Test_NewAgent(t *testing.T) {
 	mockCl := mocks.NewMockIClient(ctrl)
 	mockCollector := mocks.NewMockIRuntimeAgent(ctrl)
 
-	ag := NewAgent(mockCl, mockCollector, 1, 1)
+	ag := NewAgent(mockCl, mockCollector, 1, 1, 1)
 
 	assert.Equal(t, mockCl, ag.cl)
 	assert.Equal(t, mockCollector, ag.runtimeAgent)
@@ -129,6 +129,7 @@ func Test_StartAgent(t *testing.T) {
 				runtimeAgent:   runtimeAgent,
 				reportInterval: 20 * time.Millisecond,
 				pollInterval:   10 * time.Millisecond,
+				rateLimit:      1,
 			}
 
 			errCh := make(chan error, 1)

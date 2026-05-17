@@ -79,6 +79,7 @@ func RunAgent(ctx context.Context) error {
 	cl := httpclient.NewClient(httpclient.Config{Host: "http://" + *cfg.Address, Key: *cfg.Key})
 	rc := runtimemetrics.NewRuntimeCollector()
 
-	ag := agent.NewAgent(cl, rc, time.Duration(*cfg.ReportInterval)*time.Second, time.Duration(*cfg.PollInterval)*time.Second)
+	ag := agent.NewAgent(cl, rc, time.Duration(*cfg.ReportInterval)*time.Second,
+		time.Duration(*cfg.PollInterval)*time.Second, *cfg.RateLimit)
 	return ag.StartAgent(ctx)
 }
