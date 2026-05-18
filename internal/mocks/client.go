@@ -47,3 +47,17 @@ func (mr *MockIClientMockRecorder) SendMetric(metric interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMetric", reflect.TypeOf((*MockIClient)(nil).SendMetric), metric)
 }
+
+// SendMetricList mocks base method.
+func (m *MockIClient) SendMetricList(metric []*models.Metrics) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendMetricList", metric)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendMetricList indicates an expected call of SendMetricList.
+func (mr *MockIClientMockRecorder) SendMetricList(metric interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMetricList", reflect.TypeOf((*MockIClient)(nil).SendMetricList), metric)
+}

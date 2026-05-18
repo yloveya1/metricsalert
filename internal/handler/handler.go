@@ -14,9 +14,10 @@ var templatesFS embed.FS
 type Handler struct {
 	metricCtrl  controller.IMetricController
 	metricsTmpl *template.Template
+	key         string
 }
 
-func New(metric controller.IMetricController) *Handler {
+func New(metric controller.IMetricController, key string) *Handler {
 	tmplFS, _ := fs.Sub(templatesFS, "templates")
 
 	return &Handler{
@@ -27,5 +28,6 @@ func New(metric controller.IMetricController) *Handler {
 				Funcs(templFunc).
 				ParseFS(tmplFS, "metrics.html"),
 		),
+		key: key,
 	}
 }

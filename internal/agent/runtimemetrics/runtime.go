@@ -1,42 +1,48 @@
 package runtimemetrics
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"runtime"
 	"sync"
 
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	models "github.com/yloveya1/metricsalert/internal/model"
 )
 
 const (
-	Alloc         = "Alloc"
-	BuckHashSys   = "BuckHashSys"
-	Frees         = "Frees"
-	GCCPUFraction = "GCCPUFraction"
-	GCSys         = "GCSys"
-	HeapAlloc     = "HeapAlloc"
-	HeapIdle      = "HeapIdle"
-	HeapInuse     = "HeapInuse"
-	HeapObjects   = "HeapObjects"
-	HeapReleased  = "HeapReleased"
-	HeapSys       = "HeapSys"
-	LastGC        = "LastGC"
-	Lookups       = "Lookups"
-	MCacheInuse   = "MCacheInuse"
-	MCacheSys     = "MCacheSys"
-	MSpanInuse    = "MSpanInuse"
-	MSpanSys      = "MSpanSys"
-	Mallocs       = "Mallocs"
-	NextGC        = "NextGC"
-	NumForcedGC   = "NumForcedGC"
-	NumGC         = "NumGC"
-	OtherSys      = "OtherSys"
-	PauseTotalNs  = "PauseTotalNs"
-	StackInuse    = "StackInuse"
-	StackSys      = "StackSys"
-	Sys           = "Sys"
-	TotalAlloc    = "TotalAlloc"
-	RandomValue   = "RandomValue"
+	Alloc          = "Alloc"
+	BuckHashSys    = "BuckHashSys"
+	Frees          = "Frees"
+	GCCPUFraction  = "GCCPUFraction"
+	GCSys          = "GCSys"
+	HeapAlloc      = "HeapAlloc"
+	HeapIdle       = "HeapIdle"
+	HeapInuse      = "HeapInuse"
+	HeapObjects    = "HeapObjects"
+	HeapReleased   = "HeapReleased"
+	HeapSys        = "HeapSys"
+	LastGC         = "LastGC"
+	Lookups        = "Lookups"
+	MCacheInuse    = "MCacheInuse"
+	MCacheSys      = "MCacheSys"
+	MSpanInuse     = "MSpanInuse"
+	MSpanSys       = "MSpanSys"
+	Mallocs        = "Mallocs"
+	NextGC         = "NextGC"
+	NumForcedGC    = "NumForcedGC"
+	NumGC          = "NumGC"
+	OtherSys       = "OtherSys"
+	PauseTotalNs   = "PauseTotalNs"
+	StackInuse     = "StackInuse"
+	StackSys       = "StackSys"
+	Sys            = "Sys"
+	TotalAlloc     = "TotalAlloc"
+	RandomValue    = "RandomValue"
+	TotalMemory    = "TotalMemory"
+	FreeMemory     = "FreeMemory"
+	CPUutilization = "CPUutilization"
 
 	PollCount = "PollCount"
 )
@@ -52,13 +58,24 @@ func NewRuntimeCollector() *RuntimeCollector {
 
 func (rc *RuntimeCollector) GetMetrics() []*models.Metrics {
 	rc.mu.Lock()
-	defer rc.mu.Unlock()
-
 	rc.counter++
-	metRuntime := runtime.MemStats{}
+	currentCounter := rc.counter
+	rc.mu.Unlock()
+
+	var metrics []*models.Metrics
+	metrics = append(metrics, getRuntimeMetrics(currentCounter)...)
+
+	systemMetrics, _ := getSystemMetrics()
+	metrics = append(metrics, systemMetrics...)
+
+	return metrics
+}
+
+func getRuntimeMetrics(counter int64) []*models.Metrics {
+	var metRuntime runtime.MemStats
 	runtime.ReadMemStats(&metRuntime)
 
-	metrics := []*models.Metrics{
+	return []*models.Metrics{
 		{ID: Alloc, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Alloc))},
 		{ID: BuckHashSys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.BuckHashSys))},
 		{ID: Frees, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Frees))},
@@ -87,10 +104,35 @@ func (rc *RuntimeCollector) GetMetrics() []*models.Metrics {
 		{ID: Sys, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.Sys))},
 		{ID: TotalAlloc, MType: models.Gauge, Value: float64Ptr(float64(metRuntime.TotalAlloc))},
 		{ID: RandomValue, MType: models.Gauge, Value: float64Ptr(rand.Float64())},
-		{ID: PollCount, MType: models.Counter, Delta: &rc.counter},
+		{ID: PollCount, MType: models.Counter, Delta: &counter},
+	}
+}
+
+func getSystemMetrics() ([]*models.Metrics, error) {
+	vMem, err := mem.VirtualMemory()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get virtual memory: %w", err)
 	}
 
-	return metrics
+	metrics := []*models.Metrics{
+		{ID: TotalMemory, MType: models.Gauge, Value: float64Ptr(float64(vMem.Total))},
+		{ID: FreeMemory, MType: models.Gauge, Value: float64Ptr(float64(vMem.Free))},
+	}
+
+	cpuPercents, err := cpu.Percent(0, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cpu data: %w", err)
+	}
+
+	for i, v := range cpuPercents {
+		metrics = append(metrics, &models.Metrics{
+			ID:    fmt.Sprintf("%s%d", CPUutilization, i+1),
+			MType: models.Gauge,
+			Value: float64Ptr(v),
+		})
+	}
+
+	return metrics, nil
 }
 
 func float64Ptr(v float64) *float64 {
