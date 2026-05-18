@@ -67,13 +67,15 @@ func (h *HTTPClient) SendMetricList(metricList []*models.Metrics) error {
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		err := h.sendMetricList(metricList)
-		if err != nil {
-			if errors.Is(err, metrics.ErrConnection) && attempt < maxRetries {
-				time.Sleep(delays[attempt-1] * time.Second)
-				continue
-			}
-			return fmt.Errorf("request error, err: %w", err)
+		if err == nil {
+			return nil
 		}
+
+		if errors.Is(err, metrics.ErrConnection) && attempt < maxRetries {
+			time.Sleep(delays[attempt-1] * time.Second)
+			continue
+		}
+		return fmt.Errorf("request error, err: %w", err)
 	}
 
 	return nil

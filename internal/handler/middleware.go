@@ -135,6 +135,48 @@ func (h *Handler) WithLogging() func(http.Handler) http.Handler {
 	}
 }
 
+type hashWriter struct {
+	w          http.ResponseWriter
+	key        string
+	body       *bytes.Buffer
+	statusCode int
+}
+
+func newHashWriter(w http.ResponseWriter, key string) *hashWriter {
+	return &hashWriter{
+		w:          w,
+		key:        key,
+		body:       &bytes.Buffer{},
+		statusCode: http.StatusOK,
+	}
+}
+
+func (h *hashWriter) Header() http.Header {
+	return h.w.Header()
+}
+
+func (h *hashWriter) Write(b []byte) (int, error) {
+	return h.body.Write(b)
+}
+
+func (h *hashWriter) WriteHeader(statusCode int) {
+	h.statusCode = statusCode
+}
+
+func (h *hashWriter) Close() error {
+	responseData := h.body.Bytes()
+
+	hasher := hmac.New(sha256.New, []byte(h.key))
+	hasher.Write(responseData)
+	responseHash := hex.EncodeToString(hasher.Sum(nil))
+
+	h.w.Header().Set(hashHeader, responseHash)
+	h.w.WriteHeader(h.statusCode)
+
+	_, err := h.w.Write(responseData)
+	return err
+}
+
 func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(h.key) == 0 {
@@ -169,6 +211,8 @@ func (h *Handler) HashMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		next.ServeHTTP(w, r)
+		hw := newHashWriter(w, h.key)
+		next.ServeHTTP(hw, r)
+		hw.Close()
 	})
 }
